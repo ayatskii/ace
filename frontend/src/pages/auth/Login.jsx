@@ -137,10 +137,7 @@ export default function Login() {
             </div>
           </div>
         </div>
-        
-        <p className="mt-6 text-center text-sm text-white/80">
-          © 2024 ACE Platform. All rights reserved.
-        </p>
+      
       </div>
     </div>
   );
