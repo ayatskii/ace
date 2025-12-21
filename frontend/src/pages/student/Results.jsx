@@ -26,11 +26,11 @@ export default function Results() {
           id: attempt.id,
           testName: attempt.test_template?.title || 'Unknown Test',
           date: new Date(attempt.start_time).toLocaleDateString(),
-          listening: attempt.result?.listening_score || null,
-          reading: attempt.result?.reading_score || null,
-          writing: attempt.result?.writing_score || null,
-          speaking: attempt.result?.speaking_score || null,
-          overall: attempt.overall_band_score || null,
+          listening: attempt.result?.listening_score ?? null,
+          reading: attempt.result?.reading_score ?? null,
+          writing: attempt.result?.writing_score ?? null,
+          speaking: attempt.result?.speaking_score ?? null,
+          overall: attempt.overall_band_score ?? null,
           status: attempt.status === 'graded' ? 'Graded' : attempt.status === 'submitted' ? 'Pending' : 'In Progress'
         }));
         
@@ -113,20 +113,20 @@ export default function Results() {
                         <div className="text-sm text-gray-500">{result.date}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm font-semibold text-gray-900">{result.listening || '-'}</span>
+                        <span className="text-sm font-semibold text-gray-900">{result.listening ?? '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm font-semibold text-gray-900">{result.reading || '-'}</span>
+                        <span className="text-sm font-semibold text-gray-900">{result.reading ?? '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm font-semibold text-gray-900">{result.writing || '-'}</span>
+                        <span className="text-sm font-semibold text-gray-900">{result.writing ?? '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className="text-sm font-semibold text-gray-900">{result.speaking || '-'}</span>
+                        <span className="text-sm font-semibold text-gray-900">{result.speaking ?? '-'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-primary-100 text-primary-700">
-                          {result.overall || '-'}
+                          {result.overall ?? '-'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">

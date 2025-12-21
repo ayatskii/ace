@@ -5,6 +5,7 @@ from typing import List
 from app.database import get_db
 from app.schemas.user import (
     UserResponse, 
+    UserCreate,
     UserUpdate, 
     UserProfileCreate, 
     UserProfileResponse, 
@@ -202,16 +203,10 @@ def get_student_stats(
     if next_test_attempt and next_test_attempt.test_template:
         next_test = next_test_attempt.test_template.title
     
-    # Calculate current streak (simplified - just return 0 for now)
-    # Can be enhanced with actual date tracking later
-    current_streak = 0
-    
     return StudentStatsResponse(
         tests_completed=tests_completed,
         average_score=round(avg_score, 1) if avg_score else None,
-        hours_studied=0,  # Placeholder - needs tracking implementation
-        next_test=next_test,
-        current_streak=current_streak
+        next_test=next_test
     ).model_dump()
 
 
@@ -262,6 +257,41 @@ def get_user_by_id(
         )
     
     return user
+
+@router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user_by_admin(
+    user_data: UserCreate,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new user account (Admin only)
+    
+    Admins can create users with any role: student, teacher, or admin
+    """
+    # Check if user already exists
+    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Create new user with admin-specified role
+    hashed_password = get_password_hash(user_data.password)
+    new_user = User(
+        email=user_data.email,
+        full_name=user_data.full_name,
+        phone=user_data.phone,
+        role=user_data.role or "student",  # Use provided role or default to student
+        password_hash=hashed_password
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    return new_user
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(

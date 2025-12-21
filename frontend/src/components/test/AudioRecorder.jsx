@@ -137,9 +137,20 @@ const AudioRecorder = ({ onRecordingComplete, isRecording, maxDuration }) => {
             </div>
         )}
       </div>
-      <p className="text-sm text-gray-500">
-        {isRecording ? "Recording in progress..." : "Waiting to start..."}
-      </p>
+      <div className="flex flex-col items-center space-y-2">
+        <p className="text-sm text-gray-500">
+          {isRecording ? "Recording in progress..." : "Waiting to start..."}
+        </p>
+        {isRecording && (
+          <button
+            onClick={stopRecording}
+            className="px-4 py-2 bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition text-sm font-semibold flex items-center space-x-2"
+          >
+            <span className="w-3 h-3 bg-red-600 rounded-sm"></span>
+            <span>Stop Recording</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 };

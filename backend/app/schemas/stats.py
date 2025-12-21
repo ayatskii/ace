@@ -6,9 +6,7 @@ class StudentStatsResponse(BaseModel):
     """Statistics for student dashboard"""
     tests_completed: int
     average_score: Optional[float]
-    hours_studied: int  # Can be enhanced later with actual tracking
     next_test: Optional[str]
-    current_streak: int  # Days streak
 
 
 class TeacherStatsResponse(BaseModel):

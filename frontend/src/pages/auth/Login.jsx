@@ -95,6 +95,17 @@ export default function Login() {
                 onChange={handleChange}
               />
             </div>
+
+            <div className="flex items-center justify-end">
+              <div className="text-sm">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-primary-600 hover:text-primary-500"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
+            </div>
             
             <div>
               <button
@@ -117,6 +128,8 @@ export default function Login() {
             </div>
           </form>
           
+          {/* REGISTRATION TEMPORARILY DISABLED */}
+          {/* 
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -134,6 +147,21 @@ export default function Login() {
               >
                 Create a free account →
               </Link>
+            </div>
+          </div>
+          */}
+          
+          {/* Notice for new users */}
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+            </div>
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-600">
+                Need an account? <span className="font-semibold">Contact your administrator</span>
+              </p>
             </div>
           </div>
         </div>

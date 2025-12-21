@@ -16,8 +16,10 @@ from app.schemas.test import (
     TestSectionUpdate,
     TestAttemptCreate, 
     TestAttemptResponse, 
+    TestAttemptResponse, 
     TestAttemptWithDetails,
-    TestStructureResponse
+    TestStructureResponse,
+    TestSubmission
 )
 from app.models import User, TestTemplate, TestSection, TestAttempt
 from app.core.security import get_current_user, get_current_admin_user
@@ -349,6 +351,21 @@ def start_test_attempt(
             detail="Test not found or not available"
         )
     
+    # Check for existing attempt
+    existing_attempt = db.query(TestAttempt).filter(
+        TestAttempt.user_id == current_user.id,
+        TestAttempt.test_template_id == attempt_data.test_template_id
+    ).first()
+
+    if existing_attempt:
+        if existing_attempt.status == "in_progress":
+            return existing_attempt
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You have already completed this test"
+            )
+    
     # Create test attempt
     attempt = TestAttempt(
         user_id=current_user.id,
@@ -373,13 +390,18 @@ def get_my_test_attempts(
     """
     Get current user's test attempts
     """
+    from sqlalchemy.orm import joinedload
+    
     query = db.query(TestAttempt).filter(TestAttempt.user_id == current_user.id)
     
     if status:
         query = query.filter(TestAttempt.status == status)
     
-    attempts = query.order_by(TestAttempt.created_at.desc()).offset(skip).limit(limit).all()
-    
+    attempts = query.options(
+        joinedload(TestAttempt.test_template),
+        joinedload(TestAttempt.result)
+    ).order_by(TestAttempt.created_at.desc()).offset(skip).limit(limit).all()
+            
     return attempts
 
 @router.get("/attempts/{attempt_id}", response_model=TestAttemptWithDetails)
@@ -440,14 +462,18 @@ def get_test_attempt(
 @router.put("/attempts/{attempt_id}/submit", response_model=TestAttemptResponse)
 def submit_test_attempt(
     attempt_id: int,
+    submission_data: TestSubmission = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Submit a test attempt
     
-    This marks the test as submitted and records the end time
+    This marks the test as submitted and records the end time.
+    It also saves any writing answers provided in the body.
     """
+    from app.models import WritingSubmission
+    
     attempt = db.query(TestAttempt).filter(
         TestAttempt.id == attempt_id,
         TestAttempt.user_id == current_user.id
@@ -465,13 +491,217 @@ def submit_test_attempt(
             detail="Test already submitted"
         )
     
+    # Save writing answers if provided
+    if submission_data:
+        # Process Writing Answers
+        from app.models import WritingTask
+        
+        # Get all writing tasks for this test
+        writing_tasks = db.query(WritingTask).join(TestSection).filter(
+            TestSection.test_template_id == attempt.test_template_id,
+            TestSection.section_type == "writing"
+        ).all()
+        
+        # Create submissions for all writing tasks (even if empty)
+        for task in writing_tasks:
+            # Check if submission already exists
+            existing_sub = db.query(WritingSubmission).filter(
+                WritingSubmission.test_attempt_id == attempt_id,
+                WritingSubmission.task_id == task.id
+            ).first()
+            
+            # Find the answer for this task (if provided)
+            task_answer = None
+            if submission_data.writing_answers:
+                for answer in submission_data.writing_answers:
+                    if answer.task_id == task.id:
+                        task_answer = answer
+                        break
+            
+            response_text = task_answer.response_text if task_answer else ""
+            word_count = len(response_text.split()) if response_text else 0
+            
+            if existing_sub:
+                existing_sub.response_text = response_text
+                existing_sub.word_count = word_count
+                existing_sub.submitted_at = datetime.now(timezone.utc)
+            else:
+                new_sub = WritingSubmission(
+                    test_attempt_id=attempt_id,
+                    task_id=task.id,
+                    response_text=response_text,
+                    word_count=word_count,
+                    status="pending",
+                    assigned_teacher_id=None
+                )
+                db.add(new_sub)
+        
+        # Process Listening Answers
+        if submission_data.listening_answers:
+            from app.models import ListeningSubmission, ListeningQuestion
+            for answer in submission_data.listening_answers:
+                # Get question to check correctness
+                question = db.query(ListeningQuestion).get(answer.question_id)
+                is_correct = False
+                if question and question.answers:
+                    # Check against all possible correct answers
+                    for correct_ans in question.answers:
+                        user_ans = answer.user_answer.strip()
+                        correct_ans_text = correct_ans.correct_answer.strip()
+                        
+                        # Respect case sensitivity setting
+                        if correct_ans.case_sensitive:
+                            if user_ans == correct_ans_text:
+                                is_correct = True
+                                break
+                        else:
+                            if user_ans.lower() == correct_ans_text.lower():
+                                is_correct = True
+                                break
+                        
+                        # Check alternative answers if any
+                        if correct_ans.alternative_answers:
+                            for alt in correct_ans.alternative_answers:
+                                alt_text = alt.strip()
+                                if correct_ans.case_sensitive:
+                                    if user_ans == alt_text:
+                                        is_correct = True
+                                        break
+                                else:
+                                    if user_ans.lower() == alt_text.lower():
+                                        is_correct = True
+                                        break
+                        if is_correct: break
+                
+                existing_sub = db.query(ListeningSubmission).filter(
+                    ListeningSubmission.test_attempt_id == attempt_id,
+                    ListeningSubmission.question_id == answer.question_id
+                ).first()
+                
+                if existing_sub:
+                    existing_sub.user_answer = answer.user_answer
+                    existing_sub.is_correct = is_correct
+                    existing_sub.submitted_at = datetime.now(timezone.utc)
+                else:
+                    new_sub = ListeningSubmission(
+                        test_attempt_id=attempt_id,
+                        question_id=answer.question_id,
+                        user_answer=answer.user_answer,
+                        is_correct=is_correct
+                    )
+                    db.add(new_sub)
+
+        # Process Reading Answers
+        if submission_data.reading_answers:
+            from app.models import ReadingSubmission, ReadingQuestion
+            for answer in submission_data.reading_answers:
+                # Get question to check correctness
+                question = db.query(ReadingQuestion).get(answer.question_id)
+                is_correct = False
+                if question and question.answers:
+                    for correct_ans in question.answers:
+                        user_ans = answer.user_answer.strip()
+                        correct_ans_text = correct_ans.correct_answer.strip()
+                        
+                        # Respect case sensitivity setting
+                        if correct_ans.case_sensitive:
+                            if user_ans == correct_ans_text:
+                                is_correct = True
+                                break
+                        else:
+                            if user_ans.lower() == correct_ans_text.lower():
+                                is_correct = True
+                                break
+                        
+                        # Check alternative answers if any
+                        if correct_ans.alternative_answers:
+                            for alt in correct_ans.alternative_answers:
+                                alt_text = alt.strip()
+                                if correct_ans.case_sensitive:
+                                    if user_ans == alt_text:
+                                        is_correct = True
+                                        break
+                                else:
+                                    if user_ans.lower() == alt_text.lower():
+                                        is_correct = True
+                                        break
+                        if is_correct: break
+                
+                existing_sub = db.query(ReadingSubmission).filter(
+                    ReadingSubmission.test_attempt_id == attempt_id,
+                    ReadingSubmission.question_id == answer.question_id
+                ).first()
+                
+                if existing_sub:
+                    existing_sub.user_answer = answer.user_answer
+                    existing_sub.is_correct = is_correct
+                    existing_sub.submitted_at = datetime.now(timezone.utc)
+                else:
+                    new_sub = ReadingSubmission(
+                        test_attempt_id=attempt_id,
+                        question_id=answer.question_id,
+                        user_answer=answer.user_answer,
+                        is_correct=is_correct
+                    )
+                    db.add(new_sub)
+    
     attempt.status = "submitted"
     attempt.end_time = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(attempt)
     
+    # Calculate initial results (Listening & Reading)
+    try:
+        calculate_initial_results(attempt.id, db)
+    except Exception as e:
+        print(f"Error calculating results: {e}")
+    
     return attempt
+
+def calculate_initial_results(attempt_id: int, db: Session):
+    """
+    Calculate scores for auto-graded sections (Listening & Reading)
+    and create the initial TestResult record.
+    """
+    from app.models import ListeningSubmission, ReadingSubmission, TestResult
+    
+    # Calculate Listening Score
+    listening_correct = db.query(ListeningSubmission).filter(
+        ListeningSubmission.test_attempt_id == attempt_id,
+        ListeningSubmission.is_correct == True
+    ).count()
+    
+    # Simple band score mapping (approximate)
+    # In a real app, this would use a lookup table based on the specific test version
+    listening_score = min(9.0, round((listening_correct / 40) * 9 * 2) / 2) if listening_correct > 0 else 0.0
+    
+    # Calculate Reading Score
+    reading_correct = db.query(ReadingSubmission).filter(
+        ReadingSubmission.test_attempt_id == attempt_id,
+        ReadingSubmission.is_correct == True
+    ).count()
+    
+    reading_score = min(9.0, round((reading_correct / 40) * 9 * 2) / 2) if reading_correct > 0 else 0.0
+    
+    # Create or Update TestResult
+    result = db.query(TestResult).filter(TestResult.test_attempt_id == attempt_id).first()
+    
+    if not result:
+        result = TestResult(
+            test_attempt_id=attempt_id,
+            listening_score=listening_score,
+            reading_score=reading_score,
+            writing_score=None, # Pending grading
+            speaking_score=None, # Pending grading
+            overall_band_score=0.0 # Will be calculated when all components are ready
+        )
+        db.add(result)
+    else:
+        result.listening_score = listening_score
+        result.reading_score = reading_score
+        
+    db.commit()
 
 @router.delete("/attempts/{attempt_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_test_attempt(
@@ -552,7 +782,35 @@ async def upload_speaking_audio(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # In a real app, we would save the URL/path to a SpeakingSubmission record here
-    # For now, we just return success
+    # Create or update SpeakingSubmission
+    from app.models import SpeakingSubmission
     
-    return {"filename": filename, "status": "uploaded"}
+    # Mock duration for now since we don't extract it from audio yet
+    # In real app, use ffmpeg or similar to get duration
+    duration = 0 
+    
+    existing_sub = db.query(SpeakingSubmission).filter(
+        SpeakingSubmission.test_attempt_id == attempt_id,
+        SpeakingSubmission.task_id == task_id
+    ).first()
+    
+    # Construct URL (assuming static file serving is set up or will be)
+    # For local dev, we might need a route to serve these
+    audio_url = f"/uploads/speaking/{filename}"
+    
+    if existing_sub:
+        existing_sub.audio_url = audio_url
+        existing_sub.submitted_at = datetime.now(timezone.utc)
+    else:
+        new_sub = SpeakingSubmission(
+            test_attempt_id=attempt_id,
+            task_id=task_id,
+            audio_url=audio_url,
+            duration_seconds=duration, # Placeholder
+            status="pending"
+        )
+        db.add(new_sub)
+        
+    db.commit()
+    
+    return {"filename": filename, "status": "uploaded", "audio_url": audio_url}

@@ -6,6 +6,8 @@ import { useAuthStore } from './store/authStore';
 // Auth
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 
 // Student
 import StudentDashboard from './pages/student/Dashboard';
@@ -19,6 +21,7 @@ import Results from './pages/student/Results';
 import TeacherDashboard from './pages/teacher/Dashboard';
 import GradeWriting from './pages/teacher/GradeWriting';
 import GradeSpeaking from './pages/teacher/GradeSpeaking';
+import TeacherHistory from './pages/teacher/TeacherHistory';
 
 // Admin
 import AdminDashboard from './pages/admin/Dashboard';
@@ -57,6 +60,8 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Student routes */}
           <Route path="/student/dashboard" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.STUDENT]}><StudentDashboard /></RoleRoute></ProtectedRoute>} />
@@ -69,7 +74,9 @@ function App() {
           {/* Teacher routes */}
           <Route path="/teacher/dashboard" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.TEACHER, UserRole.ADMIN]}><TeacherDashboard /></RoleRoute></ProtectedRoute>} />
           <Route path="/teacher/grading/writing" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.TEACHER, UserRole.ADMIN]}><GradeWriting /></RoleRoute></ProtectedRoute>} />
+          <Route path="/teacher/grading/writing" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.TEACHER, UserRole.ADMIN]}><GradeWriting /></RoleRoute></ProtectedRoute>} />
           <Route path="/teacher/grading/speaking" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.TEACHER, UserRole.ADMIN]}><GradeSpeaking /></RoleRoute></ProtectedRoute>} />
+          <Route path="/teacher/history" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.TEACHER, UserRole.ADMIN]}><TeacherHistory /></RoleRoute></ProtectedRoute>} />
           
           {/* Admin routes */}
           <Route path="/admin/dashboard" element={<ProtectedRoute><RoleRoute allowedRoles={[UserRole.ADMIN]}><AdminDashboard /></RoleRoute></ProtectedRoute>} />

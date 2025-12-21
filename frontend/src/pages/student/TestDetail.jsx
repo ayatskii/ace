@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import MainLayout from '../../components/layout/MainLayout';
 import { testsApi } from '../../api/tests';
@@ -10,10 +10,23 @@ export default function TestDetail() {
   const [showStartModal, setShowStartModal] = useState(false);
   
   // Fetch test details
-  const { data: test, isLoading } = useQuery({
+  const { data: test, isLoading: isTestLoading } = useQuery({
     queryKey: ['test', id],
     queryFn: () => testsApi.getById(id),
   });
+  
+  // Fetch user's attempts to check status
+  const { data: attempts, isLoading: isAttemptsLoading } = useQuery({
+    queryKey: ['my-attempts'],
+    queryFn: () => testsApi.getMyAttempts(),
+  });
+
+  const existingAttempt = attempts?.data?.find(
+    (attempt) => attempt.test_template_id === parseInt(id)
+  );
+
+  const isCompleted = existingAttempt && ['submitted', 'graded'].includes(existingAttempt.status);
+  const isInProgress = existingAttempt && existingAttempt.status === 'in_progress';
   
   // Start test mutation
   const startTestMutation = useMutation({
@@ -21,13 +34,27 @@ export default function TestDetail() {
     onSuccess: (data) => {
       navigate(`/student/test/${data.data.id}`);
     },
+    onError: (error) => {
+        // If backend says we already have an attempt (which shouldn't happen with UI checks, but just in case)
+        if (error.response?.status === 400 && error.response?.data?.detail === "You have already completed this test") {
+            alert("You have already completed this test.");
+        }
+    }
   });
   
   const handleStartTest = () => {
+    if (isCompleted) {
+        navigate(`/student/results/${existingAttempt.id}`); // Assuming there's a results page
+        return;
+    }
+    if (isInProgress) {
+        navigate(`/student/test/${existingAttempt.id}`);
+        return;
+    }
     startTestMutation.mutate(parseInt(id));
   };
   
-  if (isLoading) {
+  if (isTestLoading || isAttemptsLoading) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-96">
@@ -82,12 +109,28 @@ export default function TestDetail() {
             </div>
           </div>
           
-          <button
-            onClick={() => setShowStartModal(true)}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white py-4 rounded-lg font-bold text-lg transition shadow-lg"
-          >
-            Start Test
-          </button>
+          {isCompleted ? (
+              <button
+                onClick={() => navigate(`/student/results`)} 
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-lg font-bold text-lg transition shadow-lg"
+              >
+                View Results
+              </button>
+          ) : isInProgress ? (
+              <button
+                onClick={() => navigate(`/student/test/${existingAttempt.id}`)}
+                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-4 rounded-lg font-bold text-lg transition shadow-lg"
+              >
+                Resume Test
+              </button>
+          ) : (
+              <button
+                onClick={() => setShowStartModal(true)}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white py-4 rounded-lg font-bold text-lg transition shadow-lg"
+              >
+                Start Test
+              </button>
+          )}
         </div>
         
         {/* Instructions */}

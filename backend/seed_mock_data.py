@@ -118,6 +118,28 @@ def seed_mock_data():
         )
         db.add(q1)
 
+        db.add(q1)
+
+        # Create questions 2-10 for Part 1
+        for i in range(2, 11):
+            q = ListeningQuestion(
+                section_id=listening_section.id,
+                part_id=part1.id,
+                question_number=i,
+                question_type=QuestionTypeEnum.LISTENING_MULTIPLE_CHOICE,
+                question_text=f"Sample Part 1 Question {i}",
+                order=i,
+                has_options=True,
+                options=[
+                    {"option_label": "A", "option_text": "Option A"},
+                    {"option_label": "B", "option_text": "Option B"},
+                    {"option_label": "C", "option_text": "Option C"},
+                    {"option_label": "D", "option_text": "Option D"}
+                ],
+                marks=1
+            )
+            db.add(q)
+
         # Part 2: Map/Diagram
         part2 = ListeningPart(
             section_id=listening_section.id,
@@ -135,11 +157,24 @@ def seed_mock_data():
             question_number=11,
             question_type=QuestionTypeEnum.LISTENING_MAP_DIAGRAM,
             question_text="Label the library on the map.",
-            order=1,
+            order=11,
             marks=1,
             image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Map_of_Geneva.svg/1200px-Map_of_Geneva.svg.png" # Mock Map
         )
         db.add(q2)
+
+        # Create questions 12-20 for Part 2
+        for i in range(12, 21):
+            q = ListeningQuestion(
+                section_id=listening_section.id,
+                part_id=part2.id,
+                question_number=i,
+                question_type=QuestionTypeEnum.LISTENING_MAP_DIAGRAM,
+                question_text=f"Label item {i} on the map.",
+                order=i,
+                marks=1
+            )
+            db.add(q)
 
         # Part 3: Matching
         part3 = ListeningPart(
@@ -158,7 +193,7 @@ def seed_mock_data():
             question_number=21,
             question_type=QuestionTypeEnum.LISTENING_MATCHING,
             question_text="Match the student to their project topic.",
-            order=1,
+            order=21,
             has_options=True,
             options=[
                 {"option_label": "A", "option_text": "Climate Change"},
@@ -168,6 +203,25 @@ def seed_mock_data():
             marks=1
         )
         db.add(q3)
+
+        # Create questions 22-30 for Part 3
+        for i in range(22, 31):
+            q = ListeningQuestion(
+                section_id=listening_section.id,
+                part_id=part3.id,
+                question_number=i,
+                question_type=QuestionTypeEnum.LISTENING_MATCHING,
+                question_text=f"Match item {i} to its category.",
+                order=i,
+                has_options=True,
+                options=[
+                    {"option_label": "A", "option_text": "Category A"},
+                    {"option_label": "B", "option_text": "Category B"},
+                    {"option_label": "C", "option_text": "Category C"}
+                ],
+                marks=1
+            )
+            db.add(q)
 
         # Part 4: Fill in Blank (Loop to fill up to 40 questions)
         part4 = ListeningPart(

@@ -18,10 +18,17 @@ export default function Profile() {
     });
   };
   
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    // TODO: API call to update profile
-    setIsEditing(false);
+    try {
+      const apiClient = (await import('../../api/client')).default;
+      await apiClient.put('/users/profile', formData);
+      alert('Profile updated successfully!');
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Profile update failed:', err);
+      alert('Failed to update profile. Please try again.');
+    }
   };
   
   return (

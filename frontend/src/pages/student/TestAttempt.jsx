@@ -78,7 +78,53 @@ export default function TestAttempt() {
   const handleSubmitTest = async () => {
     try {
       if (window.confirm("Are you sure you want to submit the test?")) {
-        await apiClient.put(`/tests/attempts/${attemptId}/submit`);
+        // Categorize answers
+        const writingAnswers = [];
+        const listeningAnswers = [];
+        const readingAnswers = [];
+
+        Object.entries(answers).forEach(([key, value]) => {
+            if (key.startsWith('w-')) {
+                writingAnswers.push({
+                    task_id: parseInt(key.replace('w-', '')),
+                    response_text: value
+                });
+            } else {
+                // Check if it's a listening or reading question
+                // We need to look up the question ID in the test structure
+                const qId = parseInt(key);
+                
+                // Check Listening
+                const isListening = testStructure.listening_questions.some(q => q.id === qId);
+                if (isListening) {
+                    listeningAnswers.push({
+                        question_id: qId,
+                        user_answer: value
+                    });
+                    return;
+                }
+
+                // Check Reading
+                // Reading questions are nested in passages in the structure we built in backend, 
+                // but let's check if we have a flat list or need to search passages
+                // The backend get_test_attempt flattens them into reading_questions!
+                const isReading = testStructure.reading_questions.some(q => q.id === qId);
+                if (isReading) {
+                    readingAnswers.push({
+                        question_id: qId,
+                        user_answer: value
+                    });
+                }
+            }
+        });
+
+        const payload = {
+          writing_answers: writingAnswers,
+          listening_answers: listeningAnswers,
+          reading_answers: readingAnswers
+        };
+
+        await apiClient.put(`/tests/attempts/${attemptId}/submit`, payload);
         alert("Test submitted successfully!");
         navigate('/student/dashboard');
       }
@@ -205,8 +251,18 @@ export default function TestAttempt() {
               onChange={(e) => setAnswers({...answers, [`w-${currentQuestion.id}`]: e.target.value})}
               value={answers[`w-${currentQuestion.id}`] || ''}
             />
-            <div className="mt-2 text-right text-sm text-gray-500">
-              Word count: {(answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length}
+            <div className="mt-2 flex justify-between items-center">
+              <div className={`text-sm ${
+                ((answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentQuestion.word_limit_min)
+                  ? 'text-red-600 font-semibold'
+                  : 'text-gray-500'
+              }`}>
+                {((answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentQuestion.word_limit_min) && '⚠️ '}
+                Word count: {(answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length}
+                {((answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentQuestion.word_limit_min) && 
+                  ` (Minimum: ${currentQuestion.word_limit_min})`
+                }
+              </div>
             </div>
           </div>
         </div>

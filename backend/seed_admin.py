@@ -18,10 +18,10 @@ def seed_admin_accounts():
         admin_exists = db.query(User).filter(User.email == "admin@ielts.com").first()
         if not admin_exists:
             admin_user = User(
-                email="admin@ielts.com",
-                full_name="Platform Administrator",
+                email="miras@shluha.com",
+                full_name="Miras Pidaras",
                 role="admin",
-                password_hash=get_password_hash("Admin123!")
+                password_hash=get_password_hash("AdickGandon123!")
             )
             db.add(admin_user)
             print("✅ Created admin account: admin@ielts.com")

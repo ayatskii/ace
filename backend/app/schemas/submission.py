@@ -63,6 +63,8 @@ class WritingSubmissionResponse(BaseModel):
     submitted_at: datetime
     assigned_teacher_id: Optional[int]
     graded_at: Optional[datetime]
+    student_name: Optional[str] = None
+    student_email: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -93,6 +95,8 @@ class SpeakingSubmissionResponse(BaseModel):
     submitted_at: datetime
     assigned_teacher_id: Optional[int]
     graded_at: Optional[datetime]
+    student_name: Optional[str] = None
+    student_email: Optional[str] = None
     
     class Config:
         from_attributes = True

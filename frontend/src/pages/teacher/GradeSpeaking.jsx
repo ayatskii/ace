@@ -1,16 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TeacherLayout from '../../components/layout/TeacherLayout';
 import BandScoreSlider from '../../components/teacher/BandScoreSlider';
+import apiClient from '../../api/client';
 
 export default function GradeSpeaking() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
-  
-  // Mock pending submissions
-  const pendingSubmissions = [
-    { id: 1, student: 'Sarah Wilson', part: 'Part 2', duration: '2:15', submitted: '1 hour ago' },
-    { id: 2, student: 'Tom Brown', part: 'Part 3', duration: '4:30', submitted: '2 hours ago' },
-    { id: 3, student: 'Emma Davis', part: 'Part 1', duration: '5:45', submitted: '3 hours ago' },
-  ];
+  const [pendingSubmissions, setPendingSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   const [scores, setScores] = useState({
     fluencyCoherence: 7.0,
@@ -20,16 +17,49 @@ export default function GradeSpeaking() {
   });
   
   const [feedback, setFeedback] = useState('');
+
+  useEffect(() => {
+    fetchPendingSubmissions();
+  }, []);
+
+  const fetchPendingSubmissions = async () => {
+    try {
+      const response = await apiClient.get('/grading/speaking/pending');
+      setPendingSubmissions(response.data);
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to fetch submissions:', err);
+      setError('Failed to load submissions.');
+      setLoading(false);
+    }
+  };
   
   const calculateOverallScore = () => {
     const avg = (scores.fluencyCoherence + scores.lexicalResource + scores.grammaticalRange + scores.pronunciation) / 4;
-    return avg.toFixed(1);
+    return (Math.round(avg * 2) / 2).toFixed(1);
   };
   
-  const handleSubmitGrade = () => {
-    // TODO: API call
-    alert(`Grade submitted: ${calculateOverallScore()}`);
-    setSelectedSubmission(null);
+  const handleSubmitGrade = async () => {
+    if (!selectedSubmission) return;
+
+    try {
+      const gradeData = {
+        fluency_coherence_score: scores.fluencyCoherence,
+        lexical_resource_score: scores.lexicalResource,
+        grammatical_range_score: scores.grammaticalRange,
+        pronunciation_score: scores.pronunciation,
+        feedback_text: feedback
+      };
+
+      await apiClient.post(`/grading/speaking/${selectedSubmission.id}`, gradeData);
+      
+      alert(`Grade submitted successfully! Overall Score: ${calculateOverallScore()}`);
+      setSelectedSubmission(null);
+      fetchPendingSubmissions(); // Refresh list
+    } catch (err) {
+      console.error('Failed to submit grade:', err);
+      alert('Failed to submit grade. Please try again.');
+    }
   };
   
   if (!selectedSubmission) {
@@ -43,30 +73,40 @@ export default function GradeSpeaking() {
               Pending Submissions ({pendingSubmissions.length})
             </h2>
             
-            <div className="space-y-3">
-              {pendingSubmissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-                  onClick={() => setSelectedSubmission(submission)}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">🎤</span>
+            {loading ? (
+              <div className="text-center py-8">Loading submissions...</div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-600">{error}</div>
+            ) : pendingSubmissions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No pending submissions found.</div>
+            ) : (
+              <div className="space-y-3">
+                {pendingSubmissions.map((submission) => (
+                  <div
+                    key={submission.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer"
+                    onClick={() => setSelectedSubmission(submission)}
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <span className="text-2xl">🎤</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {submission.student_name || 'Unknown Student'}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Part {submission.task_id} • {submission.duration_seconds}s • {new Date(submission.submitted_at).toLocaleString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{submission.student}</h3>
-                      <p className="text-sm text-gray-600">
-                        {submission.part} • {submission.duration} • {submission.submitted}
-                      </p>
-                    </div>
+                    <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                      Grade Now
+                    </button>
                   </div>
-                  <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-                    Grade Now
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </TeacherLayout>
@@ -85,7 +125,7 @@ export default function GradeSpeaking() {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Grade Speaking Submission</h1>
           <p className="text-gray-600 mt-2">
-            Student: {selectedSubmission.student} | {selectedSubmission.part}
+            Student: {selectedSubmission.student_name || 'Unknown'} | Part {selectedSubmission.task_id}
           </p>
         </div>
         
@@ -97,13 +137,13 @@ export default function GradeSpeaking() {
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-8 mb-4">
               <div className="text-center mb-6">
                 <div className="text-6xl mb-4">🎧</div>
-                <p className="text-sm text-gray-600">Duration: {selectedSubmission.duration}</p>
+                <p className="text-sm text-gray-600">Duration: {selectedSubmission.duration_seconds} seconds</p>
               </div>
               
               <audio
                 controls
                 className="w-full"
-                src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+                src={selectedSubmission.audio_url.startsWith('http') ? selectedSubmission.audio_url : `http://localhost:8000${selectedSubmission.audio_url}`}
               >
                 Your browser does not support the audio element.
               </audio>
@@ -181,6 +221,6 @@ export default function GradeSpeaking() {
           </div>
         </div>
       </div>
-      </TeacherLayout>
-    );
-  }
+    </TeacherLayout>
+  );
+}  

@@ -57,6 +57,20 @@ class TestSectionResponse(TestSectionBase):
     class Config:
         from_attributes = True
 
+# Test Result Schema
+class TestResultResponse(BaseModel):
+    id: int
+    test_attempt_id: int
+    listening_score: Optional[float]
+    reading_score: Optional[float]
+    writing_score: Optional[float]
+    speaking_score: Optional[float]
+    overall_band_score: float
+    generated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 # Test Attempt Schemas
 class TestAttemptCreate(BaseModel):
     test_template_id: int
@@ -74,6 +88,10 @@ class TestAttemptResponse(BaseModel):
     status: str
     overall_band_score: Optional[float]
     created_at: datetime
+    
+    # Relationships
+    test_template: Optional[TestTemplateResponse] = None
+    result: Optional[TestResultResponse] = None
     
     class Config:
         from_attributes = True
@@ -110,3 +128,16 @@ class TestAttemptWithDetails(TestAttemptResponse):
     reading_submissions: List["ReadingSubmissionResponse"] = []
     writing_submissions: List["WritingSubmissionResponse"] = []
     speaking_submissions: List["SpeakingSubmissionResponse"] = []
+
+class WritingAnswerItem(BaseModel):
+    task_id: int
+    response_text: str
+
+class StandardAnswerItem(BaseModel):
+    question_id: int
+    user_answer: str
+
+class TestSubmission(BaseModel):
+    writing_answers: List[WritingAnswerItem] = []
+    listening_answers: List[StandardAnswerItem] = []
+    reading_answers: List[StandardAnswerItem] = []

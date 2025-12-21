@@ -12,6 +12,16 @@ export default function UserManagement() {
   const [error, setError] = useState(null);
   const [editedRole, setEditedRole] = useState('');
   
+  // Create user state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    email: '',
+    password: '',
+    full_name: '',
+    role: 'student',
+    phone: ''
+  });
+  
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -53,6 +63,25 @@ export default function UserManagement() {
     } catch (err) {
       console.error('Failed to update user:', err);
       alert(err.response?.data?.detail || 'Failed to update user role');
+    }
+  };
+  
+  const handleCreateUser = async () => {
+    try {
+      const response = await apiClient.post('/users', newUserData);
+      setUsers([...users, response.data]);
+      setShowCreateModal(false);
+      setNewUserData({
+        email: '',
+        password: '',
+        full_name: '',
+        role: 'student',
+        phone: ''
+      });
+      alert('User created successfully!');
+    } catch (err) {
+      console.error('Failed to create user:', err);
+      alert(err.response?.data?.detail || 'Failed to create user');
     }
   };
   
@@ -107,9 +136,13 @@ export default function UserManagement() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <div className="text-sm text-gray-600">
-            {users.length} total users
-          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center space-x-2"
+          >
+            <span>+</span>
+            <span>Create User</span>
+          </button>
         </div>
         
         {/* Filters */}
@@ -259,6 +292,89 @@ export default function UserManagement() {
                   className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 rounded-lg font-semibold transition"
                 >
                   Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Create User Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Create New User</h3>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={newUserData.full_name}
+                    onChange={(e) => setNewUserData({...newUserData, full_name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="John Doe"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={newUserData.email}
+                    onChange={(e) => setNewUserData({...newUserData, email: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="user@example.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                  <input
+                    type="password"
+                    value={newUserData.password}
+                    onChange={(e) => setNewUserData({...newUserData, password: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Min 8 characters"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Phone (Optional)</label>
+                  <input
+                    type="tel"
+                    value={newUserData.phone}
+                    onChange={(e) => setNewUserData({...newUserData, phone: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="+1234567890"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                  <select
+                    value={newUserData.role}
+                    onChange={(e) => setNewUserData({...newUserData, role: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="student">Student</option>
+                    <option value="teacher">Teacher</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateUser}
+                  className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 rounded-lg font-semibold transition"
+                >
+                  Create User
                 </button>
               </div>
             </div>

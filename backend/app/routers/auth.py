@@ -4,11 +4,12 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from app.database import get_db
-from app.schemas.user import LoginRequest, Token, UserCreate, UserResponse
+from app.schemas.user import LoginRequest, Token, UserCreate, UserResponse, PasswordReset, PasswordResetConfirm
 from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
+    decode_access_token,
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
@@ -16,50 +17,56 @@ from app.models import User
 
 router = APIRouter()
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(
-    user_data: UserCreate,
-    db: Session = Depends(get_db)
-):
-    """
-    Register a new user
-    
-    - **email**: Valid email address
-    - **password**: Minimum 8 characters
-    - **full_name**: User's full name
-    - **role**: student (default), teacher, or admin
-    """
-    # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    # Restrict public registration to students only
-    # Admin and teacher accounts must be created via seed script or admin panel
-    if user_data.role and user_data.role != "student":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Public registration is only available for students. Contact administrator for teacher/admin accounts."
-        )
-    
-    # Create new user (force role to student)
-    hashed_password = get_password_hash(user_data.password)
-    new_user = User(
-        email=user_data.email,
-        full_name=user_data.full_name,
-        phone=user_data.phone,
-        role="student",  # Force student role for public registration
-        password_hash=hashed_password
-    )
-    
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    return new_user
+# ============================================================
+# REGISTRATION TEMPORARILY DISABLED
+# Users must be created by admin through the admin panel
+# To re-enable: uncomment the lines below
+# ============================================================
+
+# @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+# def register(
+#     user_data: UserCreate,
+#     db: Session = Depends(get_db)
+# ):
+#     """
+#     Register a new user
+#     
+#     - **email**: Valid email address
+#     - **password**: Minimum 8 characters
+#     - **full_name**: User's full name
+#     - **role**: student (default), teacher, or admin
+#     """
+#     # Check if user already exists
+#     existing_user = db.query(User).filter(User.email == user_data.email).first()
+#     if existing_user:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST,
+#             detail="Email already registered"
+#         )
+#     
+#     # Restrict public registration to students only
+#     # Admin and teacher accounts must be created via seed script or admin panel
+#     if user_data.role and user_data.role != "student":
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="Public registration is only available for students. Contact administrator for teacher/admin accounts."
+#         )
+#     
+#     # Create new user (force role to student)
+#     hashed_password = get_password_hash(user_data.password)
+#     new_user = User(
+#         email=user_data.email,
+#         full_name=user_data.full_name,
+#         phone=user_data.phone,
+#         role="student",  # Force student role for public registration
+#         password_hash=hashed_password
+#     )
+#     
+#     db.add(new_user)
+#     db.commit()
+#     db.refresh(new_user)
+#     
+#     return new_user
 
 @router.post("/login", response_model=Token)
 def login(
@@ -143,3 +150,61 @@ def refresh_token(
         "token_type": "bearer",
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60
     }
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+def forgot_password(
+    reset_data: PasswordReset,
+    db: Session = Depends(get_db)
+):
+    """
+    Request password reset link
+    """
+    user = db.query(User).filter(User.email == reset_data.email).first()
+    if not user:
+        # Return 200 even if user not found to prevent email enumeration
+        return {"message": "If email exists, a reset link has been sent"}
+    
+    # Create reset token (valid for 15 mins)
+    access_token_expires = timedelta(minutes=15)
+    reset_token = create_access_token(
+        data={"sub": str(user.id), "type": "reset"},
+        expires_delta=access_token_expires
+    )
+    
+    # Mock email sending
+    print(f"==================================================")
+    print(f"PASSWORD RESET LINK FOR {user.email}:")
+    print(f"http://localhost:5173/reset-password?token={reset_token}")
+    print(f"==================================================")
+    
+    return {"message": "If email exists, a reset link has been sent"}
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+def reset_password(
+    reset_data: PasswordResetConfirm,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using token
+    """
+    # Verify token
+    payload = decode_access_token(reset_data.token)
+    if not payload or payload.get("type") != "reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token"
+        )
+    
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Update password
+    user.password_hash = get_password_hash(reset_data.new_password)
+    db.commit()
+    
+    return {"message": "Password updated successfully"}

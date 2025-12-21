@@ -24,8 +24,20 @@ export default function StudentDashboard() {
         });
         setStats(statsResponse.data);
         
-        // Fetch recent test attempts (placeholder - endpoint may need to be created)
-        setRecentTests([]);  // Will be populated when test attempts endpoint is available
+        // Fetch recent test attempts
+        const attemptsResponse = await axios.get('/api/v1/tests/attempts/me?limit=5', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        const formattedTests = attemptsResponse.data.map(attempt => ({
+          id: attempt.id,
+          name: attempt.test_title || `Test #${attempt.id}`,
+          date: new Date(attempt.created_at).toLocaleDateString(),
+          score: attempt.overall_band_score || '-',
+          status: attempt.status.charAt(0).toUpperCase() + attempt.status.slice(1).replace('_', ' ')
+        }));
+        
+        setRecentTests(formattedTests);
         
         setError(null);
       } catch (err) {
@@ -92,18 +104,6 @@ export default function StudentDashboard() {
             icon="⭐"
             color="green"
           />
-          <StatsCard
-            title="Hours Studied"
-            value={stats?.hours_studied || 0}
-            icon="⏱️"
-            color="blue"
-          />
-          <StatsCard
-            title="Current Streak"
-            value={stats?.current_streak ? `${stats.current_streak} days` : '0 days'}
-            icon="🔥"
-            color="purple"
-          />
         </div>
         
         {/* Quick Actions */}
@@ -150,7 +150,7 @@ export default function StudentDashboard() {
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
                       <span className="text-primary-600 font-bold text-lg">
-                        {test.score || '?'}
+                        {test.score}
                       </span>
                     </div>
                     <div>
@@ -169,9 +169,12 @@ export default function StudentDashboard() {
                     `}>
                       {test.status}
                     </span>
-                    <button className="text-primary-600 hover:text-primary-700 font-medium text-sm">
+                    <Link 
+                      to={`/student/test/${test.id}`}
+                      className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                    >
                       View Details
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))

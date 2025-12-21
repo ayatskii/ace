@@ -4,7 +4,6 @@ from typing import Optional
 
 # Writing Grade Schemas
 class WritingGradeCreate(BaseModel):
-    submission_id: int
     task_achievement_score: float = Field(..., ge=0, le=9, description="Task Achievement/Response score (0-9)")
     coherence_cohesion_score: float = Field(..., ge=0, le=9, description="Coherence and Cohesion score (0-9)")
     lexical_resource_score: float = Field(..., ge=0, le=9, description="Lexical Resource score (0-9)")
@@ -35,7 +34,6 @@ class WritingGradeResponse(BaseModel):
 
 # Speaking Grade Schemas
 class SpeakingGradeCreate(BaseModel):
-    submission_id: int
     fluency_coherence_score: float = Field(..., ge=0, le=9, description="Fluency and Coherence score (0-9)")
     lexical_resource_score: float = Field(..., ge=0, le=9, description="Lexical Resource score (0-9)")
     grammatical_range_score: float = Field(..., ge=0, le=9, description="Grammatical Range and Accuracy score (0-9)")
