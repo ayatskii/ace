@@ -1,0 +1,8 @@
+# Production Docker Compose Override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  frontend:
+    build:
+      args:
+        VITE_API_URL: http://platform.ace-academy.kz:8000/api/v1
