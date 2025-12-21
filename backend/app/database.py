@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get database URL from environment
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://ielts_user:password@localhost:5432/ielts_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ace_db")
 
 # Create SQLAlchemy engine
 engine = create_engine(
