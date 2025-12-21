@@ -5,4 +5,4 @@ services:
   frontend:
     build:
       args:
-        VITE_API_URL: http://platform.ace-academy.kz:8000/api/v1
+        VITE_API_URL: https://platform.ace-academy.kz/api/v1
