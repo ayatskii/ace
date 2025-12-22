@@ -4,6 +4,14 @@ import Timer from '../../components/test/Timer';
 import ProgressBar from '../../components/test/ProgressBar';
 import AudioRecorder from '../../components/test/AudioRecorder';
 import apiClient from '../../api/client';
+import {
+  CompletionQuestionRenderer,
+  MatchingQuestionRenderer,
+  DiagramQuestionRenderer,
+  TFNGQuestionRenderer,
+  MCQQuestionRenderer,
+  TableQuestionRenderer
+} from '../../components/test/renderers';
 
 export default function TestAttempt() {
   const { attemptId } = useParams();
@@ -23,6 +31,17 @@ export default function TestAttempt() {
         const response = await apiClient.get(`/tests/attempts/${attemptId}`);
         setAttempt(response.data);
         setTestStructure(response.data.test_structure);
+        
+        // Load existing answers if any
+        if (response.data.answers) {
+            // Transform array of answers to object { questionId: value }
+            const answerMap = {};
+            // This depends on how backend returns answers. Assuming it might return them in the attempt object
+            // or we might need to fetch them. For now, let's assume we start empty or backend populates it.
+            // If backend returns 'current_state' or similar, use that.
+            // For now, we'll rely on what's in the response or start empty.
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch attempt:', err);
@@ -75,6 +94,13 @@ export default function TestAttempt() {
     }
   };
 
+  const handleAnswerChange = (questionId, value) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
   const handleSubmitTest = async () => {
     try {
       if (window.confirm("Are you sure you want to submit the test?")) {
@@ -90,8 +116,6 @@ export default function TestAttempt() {
                     response_text: value
                 });
             } else {
-                // Check if it's a listening or reading question
-                // We need to look up the question ID in the test structure
                 const qId = parseInt(key);
                 
                 // Check Listening
@@ -99,20 +123,17 @@ export default function TestAttempt() {
                 if (isListening) {
                     listeningAnswers.push({
                         question_id: qId,
-                        user_answer: value
+                        user_answer: typeof value === 'object' ? JSON.stringify(value) : String(value)
                     });
                     return;
                 }
 
                 // Check Reading
-                // Reading questions are nested in passages in the structure we built in backend, 
-                // but let's check if we have a flat list or need to search passages
-                // The backend get_test_attempt flattens them into reading_questions!
                 const isReading = testStructure.reading_questions.some(q => q.id === qId);
                 if (isReading) {
                     readingAnswers.push({
                         question_id: qId,
-                        user_answer: value
+                        user_answer: typeof value === 'object' ? JSON.stringify(value) : String(value)
                     });
                 }
             }
@@ -139,6 +160,53 @@ export default function TestAttempt() {
     handleSectionFinish();
   };
 
+  const renderQuestionContent = (question) => {
+    const commonProps = {
+      question: question,
+      answer: answers[question.id],
+      onAnswerChange: (val) => handleAnswerChange(question.id, val)
+    };
+
+    switch (question.question_type) {
+      case 'listening_fill_in_blank':
+      case 'listening_note_completion':
+      case 'reading_sentence_completion':
+      case 'reading_summary_completion':
+      case 'reading_short_answer': 
+        return <CompletionQuestionRenderer {...commonProps} />;
+      
+      case 'listening_matching':
+      case 'reading_matching_headings':
+      case 'reading_matching_information':
+        return <MatchingQuestionRenderer {...commonProps} />;
+      
+      case 'listening_map_diagram':
+      case 'reading_diagram_labeling':
+        return <DiagramQuestionRenderer {...commonProps} />;
+      
+      case 'listening_true_false_not_given':
+      case 'reading_true_false_not_given':
+      case 'reading_yes_no_not_given':
+        return <TFNGQuestionRenderer {...commonProps} />;
+
+      case 'listening_table_completion':
+      case 'reading_table_completion':
+        return <TableQuestionRenderer {...commonProps} />;
+
+      case 'listening_multiple_choice':
+      case 'reading_multiple_choice':
+        return <MCQQuestionRenderer {...commonProps} />;
+
+      default:
+        // Fallback for unknown types
+        return (
+          <div className="space-y-3">
+             <p className="text-red-500">Unknown question type: {question.question_type}</p>
+          </div>
+        );
+    }
+  };
+
   // Render content based on section type
   const renderContent = () => {
     if (!currentQuestion) return <div>No questions in this section.</div>;
@@ -159,31 +227,8 @@ export default function TestAttempt() {
             {currentQuestion.image_url && (
                <img src={currentQuestion.image_url} alt="Question Diagram" className="mb-4 max-h-64 object-contain" />
             )}
-            {currentQuestion.has_options ? (
-              <div className="space-y-2">
-                {currentQuestion.options.map((opt, idx) => (
-                  <label key={idx} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="radio"
-                      name={`q-${currentQuestion.id}`}
-                      className="h-4 w-4 text-primary-600"
-                      onChange={() => setAnswers({...answers, [currentQuestion.id]: opt.option_label})}
-                      checked={answers[currentQuestion.id] === opt.option_label}
-                    />
-                    <span className="font-bold">{opt.option_label}</span>
-                    <span>{opt.option_text}</span>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <input
-                type="text"
-                className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                placeholder="Type your answer here..."
-                onChange={(e) => setAnswers({...answers, [currentQuestion.id]: e.target.value})}
-                value={answers[currentQuestion.id] || ''}
-              />
-            )}
+            
+            {renderQuestionContent(currentQuestion)}
           </div>
         </div>
       );
@@ -200,31 +245,8 @@ export default function TestAttempt() {
           <div className="overflow-y-auto pl-2">
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <h3 className="text-lg font-medium mb-4">{currentQuestion.question_number}. {currentQuestion.question_text}</h3>
-              {currentQuestion.has_options ? (
-                <div className="space-y-2">
-                  {currentQuestion.options.map((opt, idx) => (
-                    <label key={idx} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                      <input
-                        type="radio"
-                        name={`q-${currentQuestion.id}`}
-                        className="h-4 w-4 text-primary-600"
-                        onChange={() => setAnswers({...answers, [currentQuestion.id]: opt.option_label})}
-                        checked={answers[currentQuestion.id] === opt.option_label}
-                      />
-                      <span className="font-bold">{opt.option_label}</span>
-                      <span>{opt.option_text}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  placeholder="Type your answer here..."
-                  onChange={(e) => setAnswers({...answers, [currentQuestion.id]: e.target.value})}
-                  value={answers[currentQuestion.id] || ''}
-                />
-              )}
+              
+              {renderQuestionContent(currentQuestion)}
             </div>
           </div>
         </div>

@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../../api/client';
+import { 
+  CompletionEditor, 
+  MatchingEditor, 
+  DiagramEditor, 
+  TFNGEditor,
+  TableEditor,
+  getEditorForType,
+  QUESTION_TYPE_CATEGORIES 
+} from '../../../components/editors';
 
 export default function ListeningEditor({ sectionId, testId }) {
   const [parts, setParts] = useState([]);
@@ -21,13 +30,12 @@ export default function ListeningEditor({ sectionId, testId }) {
     question_type: 'listening_multiple_choice',
     question_text: '',
     marks: 1,
-    options: [
-      { option_label: 'A', option_text: '' },
-      { option_label: 'B', option_text: '' },
-      { option_label: 'C', option_text: '' },
-      { option_label: 'D', option_text: '' }
-    ],
-    correct_answer: 'A'
+    // Standard fields
+    options: [],
+    correct_answer: '',
+    // New structured fields
+    type_specific_data: {},
+    answer_data: {}
   });
 
   useEffect(() => {
@@ -72,24 +80,6 @@ export default function ListeningEditor({ sectionId, testId }) {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await apiClient.post('/upload/image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setQuestionForm(prev => ({ ...prev, image_url: response.data.url }));
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload image');
-    }
-  };
-
   const handleCreatePart = async (e) => {
     e.preventDefault();
     try {
@@ -120,6 +110,7 @@ export default function ListeningEditor({ sectionId, testId }) {
   const handleCreateQuestion = async (e) => {
     e.preventDefault();
     
+    // Construct payload based on question type
     const payload = {
       question: {
         section_id: parseInt(sectionId),
@@ -128,16 +119,44 @@ export default function ListeningEditor({ sectionId, testId }) {
         question_type: questionForm.question_type,
         question_text: questionForm.question_text,
         order: parseInt(questionForm.question_number),
-        has_options: ['listening_multiple_choice', 'listening_matching'].includes(questionForm.question_type),
         marks: parseInt(questionForm.marks),
-        options: ['listening_multiple_choice', 'listening_matching'].includes(questionForm.question_type) ? questionForm.options : null,
-        image_url: questionForm.image_url
+        // Legacy fields for backward compatibility if needed, but we rely on JSON columns now
+        has_options: false, 
+        options: null,
+        image_url: questionForm.type_specific_data?.image_url || null,
+        
+        // New JSON fields
+        type_specific_data: questionForm.type_specific_data,
+        answer_data: questionForm.answer_data
       },
       answer: {
-        correct_answer: questionForm.correct_answer,
+        // For simple types, we might still use this, but for complex types it's in answer_data
+        correct_answer: questionForm.correct_answer || 'See answer_data',
         case_sensitive: false
       }
     };
+
+    // Handle legacy/simple types (MCQ, Short Answer) if they don't use the new editors yet
+    if (questionForm.question_type === 'listening_multiple_choice') {
+       payload.question.has_options = true;
+       payload.question.options = questionForm.options;
+       payload.question.type_specific_data = { 
+         options: questionForm.options,
+         allow_multiple: questionForm.allow_multiple || false
+       };
+       
+       // Handle correct answer(s)
+       let correctOptions = [];
+       if (questionForm.allow_multiple) {
+          correctOptions = questionForm.correct_answers || [];
+       } else {
+          correctOptions = [questionForm.correct_answer];
+       }
+       
+       payload.question.answer_data = {
+         correct_options: correctOptions
+       };
+    }
 
     try {
       await apiClient.post('/listening/questions', payload);
@@ -150,13 +169,12 @@ export default function ListeningEditor({ sectionId, testId }) {
         question_type: 'listening_multiple_choice',
         question_text: '',
         marks: 1,
-        options: [
-          { option_label: 'A', option_text: '' },
-          { option_label: 'B', option_text: '' },
-          { option_label: 'C', option_text: '' },
-          { option_label: 'D', option_text: '' }
-        ],
-        correct_answer: 'A'
+        options: [],
+        correct_answer: '',
+        correct_answers: [],
+        allow_multiple: false,
+        type_specific_data: {},
+        answer_data: {}
       });
     } catch (error) {
       console.error('Failed to save question:', error);
@@ -173,6 +191,150 @@ export default function ListeningEditor({ sectionId, testId }) {
       console.error('Failed to delete question:', error);
     }
   };
+
+  // Render the appropriate editor based on selected type
+  const renderEditor = () => {
+    const editorType = getEditorForType(questionForm.question_type);
+    
+    const commonProps = {
+      value: {
+        ...questionForm.type_specific_data,
+        answers: questionForm.answer_data
+      },
+      onChange: (data) => {
+        setQuestionForm(prev => ({
+          ...prev,
+          type_specific_data: { ...prev.type_specific_data, ...data.type_specific_data },
+          answer_data: { ...prev.answer_data, ...data.answer_data }
+        }));
+      },
+      questionType: questionForm.question_type
+    };
+
+    switch (editorType) {
+      case 'CompletionEditor':
+        return <CompletionEditor {...commonProps} />;
+      case 'MatchingEditor':
+        return <MatchingEditor {...commonProps} />;
+      case 'DiagramEditor':
+        return <DiagramEditor {...commonProps} />;
+      case 'TFNGEditor':
+        return <TFNGEditor {...commonProps} />;
+      case 'TableEditor':
+        return <TableEditor {...commonProps} />;
+      default:
+        // Fallback for simple types (MCQ, Short Answer)
+        if (questionForm.question_type.includes('multiple_choice')) {
+          return renderMCQEditor();
+        }
+        return (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
+            <input
+              type="text"
+              value={questionForm.correct_answer}
+              onChange={(e) => setQuestionForm({...questionForm, correct_answer: e.target.value})}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              placeholder="Enter correct answer"
+            />
+          </div>
+        );
+    }
+  };
+
+  const renderMCQEditor = () => (
+    <div className="space-y-3 border-t border-gray-100 pt-4">
+      <div className="flex justify-between items-center mb-4">
+        <label className="flex items-center space-x-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={questionForm.allow_multiple || false}
+            onChange={(e) => setQuestionForm({
+              ...questionForm, 
+              allow_multiple: e.target.checked,
+              correct_answers: [] // Reset correct answers when toggling
+            })}
+            className="rounded text-primary-600"
+          />
+          <span>Allow Multiple Correct Answers</span>
+        </label>
+      </div>
+
+      <div className="flex justify-between items-center">
+        <label className="block text-sm font-medium text-gray-900">Options</label>
+        <button
+          type="button"
+          onClick={() => {
+            const nextLabel = String.fromCharCode(65 + (questionForm.options?.length || 0));
+            setQuestionForm(prev => ({
+              ...prev,
+              options: [...(prev.options || []), { option_label: nextLabel, option_text: '' }]
+            }));
+          }}
+          className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+        >
+          + Add Option
+        </button>
+      </div>
+      
+      {questionForm.options?.map((opt, idx) => (
+        <div key={idx} className="flex items-center space-x-2">
+          <span className="font-bold w-6">{opt.option_label}</span>
+          <input
+            type="text"
+            value={opt.option_text}
+            onChange={(e) => {
+              const newOptions = [...questionForm.options];
+              newOptions[idx].option_text = e.target.value;
+              setQuestionForm({...questionForm, options: newOptions});
+            }}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+            placeholder={`Option ${opt.option_label}`}
+          />
+          
+          {questionForm.allow_multiple ? (
+            <input
+              type="checkbox"
+              checked={(questionForm.correct_answers || []).includes(opt.option_label)}
+              onChange={(e) => {
+                const current = questionForm.correct_answers || [];
+                let newCorrect;
+                if (e.target.checked) {
+                  newCorrect = [...current, opt.option_label];
+                } else {
+                  newCorrect = current.filter(l => l !== opt.option_label);
+                }
+                setQuestionForm({...questionForm, correct_answers: newCorrect});
+              }}
+              className="h-4 w-4 text-primary-600 rounded"
+              title="Mark as correct"
+            />
+          ) : (
+            <input
+              type="radio"
+              name="correct_answer"
+              checked={questionForm.correct_answer === opt.option_label}
+              onChange={() => setQuestionForm({...questionForm, correct_answer: opt.option_label})}
+              className="h-4 w-4 text-primary-600"
+              title="Mark as correct"
+            />
+          )}
+          
+          <button
+            type="button"
+            onClick={() => {
+              const newOptions = questionForm.options.filter((_, i) => i !== idx);
+              const reLabeled = newOptions.map((o, i) => ({ ...o, option_label: String.fromCharCode(65 + i) }));
+              setQuestionForm({...questionForm, options: reLabeled});
+            }}
+            className="text-gray-400 hover:text-red-500"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -307,7 +469,7 @@ export default function ListeningEditor({ sectionId, testId }) {
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 m-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Add Question</h3>
             
-            <form onSubmit={handleCreateQuestion} className="space-y-4">
+            <form onSubmit={handleCreateQuestion} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Question Number</label>
@@ -335,152 +497,55 @@ export default function ListeningEditor({ sectionId, testId }) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Question Type</label>
                 <select
                   value={questionForm.question_type}
-                  onChange={(e) => setQuestionForm({...questionForm, question_type: e.target.value})}
+                  onChange={(e) => setQuestionForm({
+                    ...questionForm, 
+                    question_type: e.target.value,
+                    type_specific_data: {},
+                    answer_data: {}
+                  })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 >
-                  <option value="listening_multiple_choice">Multiple Choice</option>
-                  <option value="listening_fill_in_blank">Fill in the Blank</option>
-                  <option value="listening_matching">Matching</option>
-                  <option value="listening_map_diagram">Map / Diagram Labeling</option>
-                  <option value="listening_note_completion">Note / Form / Table Completion</option>
-                  <option value="listening_true_false_not_given">True / False / Not Given</option>
+                  <optgroup label="Completion">
+                    {QUESTION_TYPE_CATEGORIES.listening.completion.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Matching">
+                    {QUESTION_TYPE_CATEGORIES.listening.matching.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Multiple Choice">
+                    {QUESTION_TYPE_CATEGORIES.listening.choice.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Diagram/Map">
+                    {QUESTION_TYPE_CATEGORIES.listening.diagram.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </optgroup>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {questionForm.question_type === 'listening_multiple_choice' && "Standard A, B, C, D options."}
-                  {questionForm.question_type === 'listening_matching' && "Define the list of options (A, B, C...) that the student must match to this question."}
-                  {questionForm.question_type === 'listening_fill_in_blank' && "Student must type the missing word(s)."}
-                  {questionForm.question_type === 'listening_map_diagram' && "Student must identify the correct letter/label from a map."}
-                  {questionForm.question_type === 'listening_note_completion' && "Student completes a summary or form."}
-                  {questionForm.question_type === 'listening_true_false_not_given' && "Student selects True, False, or Not Given."}
-                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Question Text</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Question Text / Instructions</label>
                 <textarea
                   required
-                  rows={3}
+                  rows={2}
                   value={questionForm.question_text}
                   onChange={(e) => setQuestionForm({...questionForm, question_text: e.target.value})}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  placeholder={
-                    questionForm.question_type === 'listening_fill_in_blank' 
-                      ? "Example: The meeting starts at ______." 
-                      : "Enter the question or prompt here."
-                  }
+                  placeholder="Enter the main question text or instructions..."
                 />
               </div>
 
-              {questionForm.question_type === 'listening_map_diagram' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Map / Diagram Image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
-                  {questionForm.image_url && (
-                    <div className="mt-2">
-                      <p className="text-xs text-green-600 mb-1">Image uploaded!</p>
-                      <img src={questionForm.image_url} alt="Map Diagram" className="h-32 object-contain border border-gray-200 rounded" />
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Dynamic Editor Area */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                {renderEditor()}
+              </div>
 
-              {['listening_multiple_choice', 'listening_matching'].includes(questionForm.question_type) && (
-                <div className="space-y-3 border-t border-gray-100 pt-4">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-sm font-medium text-gray-900">
-                      {questionForm.question_type === 'listening_matching' ? 'Matching Options' : 'Options'}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextLabel = String.fromCharCode(65 + questionForm.options.length); // A, B, C...
-                        setQuestionForm({
-                          ...questionForm,
-                          options: [...questionForm.options, { option_label: nextLabel, option_text: '' }]
-                        });
-                      }}
-                      className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      + Add Option
-                    </button>
-                  </div>
-                  
-                  {questionForm.options.map((opt, idx) => (
-                    <div key={idx} className="flex items-center space-x-2">
-                      <span className="font-bold w-6">{opt.option_label}</span>
-                      <input
-                        type="text"
-                        value={opt.option_text}
-                        onChange={(e) => {
-                          const newOptions = [...questionForm.options];
-                          newOptions[idx].option_text = e.target.value;
-                          setQuestionForm({...questionForm, options: newOptions});
-                        }}
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
-                        placeholder={`Option ${opt.option_label}`}
-                      />
-                      <input
-                        type="radio"
-                        name="correct_answer"
-                        checked={questionForm.correct_answer === opt.option_label}
-                        onChange={() => setQuestionForm({...questionForm, correct_answer: opt.option_label})}
-                        className="h-4 w-4 text-primary-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newOptions = questionForm.options.filter((_, i) => i !== idx);
-                          // Re-label options
-                          const reLabeled = newOptions.map((o, i) => ({ ...o, option_label: String.fromCharCode(65 + i) }));
-                          setQuestionForm({...questionForm, options: reLabeled});
-                        }}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {questionForm.question_type === 'listening_true_false_not_given' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
-                  <select
-                    value={questionForm.correct_answer}
-                    onChange={(e) => setQuestionForm({...questionForm, correct_answer: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  >
-                    <option value="TRUE">TRUE</option>
-                    <option value="FALSE">FALSE</option>
-                    <option value="NOT GIVEN">NOT GIVEN</option>
-                  </select>
-                </div>
-              )}
-
-              {!['listening_multiple_choice', 'listening_matching', 'listening_true_false_not_given'].includes(questionForm.question_type) && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
-                  <input
-                    type="text"
-                    required
-                    value={questionForm.correct_answer}
-                    onChange={(e) => setQuestionForm({...questionForm, correct_answer: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    placeholder="Enter the correct answer text"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Case-insensitive. For multiple valid answers, separate with a slash (e.g., "color/colour").
-                  </p>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setShowAddQuestion(false)}

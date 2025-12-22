@@ -23,6 +23,8 @@ from app.schemas.test import (
 )
 from app.models import User, TestTemplate, TestSection, TestAttempt
 from app.core.security import get_current_user, get_current_admin_user
+from app.services.question_grading import grade_question
+import json
 
 router = APIRouter()
 
@@ -543,35 +545,54 @@ def submit_test_attempt(
                 # Get question to check correctness
                 question = db.query(ListeningQuestion).get(answer.question_id)
                 is_correct = False
-                if question and question.answers:
-                    # Check against all possible correct answers
-                    for correct_ans in question.answers:
-                        user_ans = answer.user_answer.strip()
-                        correct_ans_text = correct_ans.correct_answer.strip()
-                        
-                        # Respect case sensitivity setting
-                        if correct_ans.case_sensitive:
-                            if user_ans == correct_ans_text:
-                                is_correct = True
-                                break
-                        else:
-                            if user_ans.lower() == correct_ans_text.lower():
-                                is_correct = True
-                                break
-                        
-                        # Check alternative answers if any
-                        if correct_ans.alternative_answers:
-                            for alt in correct_ans.alternative_answers:
-                                alt_text = alt.strip()
-                                if correct_ans.case_sensitive:
-                                    if user_ans == alt_text:
-                                        is_correct = True
-                                        break
-                                else:
-                                    if user_ans.lower() == alt_text.lower():
-                                        is_correct = True
-                                        break
-                        if is_correct: break
+                
+                if question:
+                    # Try grading with new service (for complex types)
+                    if question.answer_data:
+                        user_val = answer.user_answer
+                        try:
+                            user_val = json.loads(answer.user_answer)
+                        except:
+                            pass
+                            
+                        grading_result = grade_question(
+                            question_type=question.question_type,
+                            user_answer=user_val,
+                            answer_data=question.answer_data,
+                            type_specific_data=question.type_specific_data
+                        )
+                        is_correct = grading_result["is_correct"]
+                    
+                    # Fallback to legacy logic if no answer_data or if we want to double check (though answer_data should take precedence)
+                    elif question.answers:
+                        # Check against all possible correct answers
+                        for correct_ans in question.answers:
+                            user_ans = answer.user_answer.strip()
+                            correct_ans_text = correct_ans.correct_answer.strip()
+                            
+                            # Respect case sensitivity setting
+                            if correct_ans.case_sensitive:
+                                if user_ans == correct_ans_text:
+                                    is_correct = True
+                                    break
+                            else:
+                                if user_ans.lower() == correct_ans_text.lower():
+                                    is_correct = True
+                                    break
+                            
+                            # Check alternative answers if any
+                            if correct_ans.alternative_answers:
+                                for alt in correct_ans.alternative_answers:
+                                    alt_text = alt.strip()
+                                    if correct_ans.case_sensitive:
+                                        if user_ans == alt_text:
+                                            is_correct = True
+                                            break
+                                    else:
+                                        if user_ans.lower() == alt_text.lower():
+                                            is_correct = True
+                                            break
+                            if is_correct: break
                 
                 existing_sub = db.query(ListeningSubmission).filter(
                     ListeningSubmission.test_attempt_id == attempt_id,
@@ -598,34 +619,53 @@ def submit_test_attempt(
                 # Get question to check correctness
                 question = db.query(ReadingQuestion).get(answer.question_id)
                 is_correct = False
-                if question and question.answers:
-                    for correct_ans in question.answers:
-                        user_ans = answer.user_answer.strip()
-                        correct_ans_text = correct_ans.correct_answer.strip()
-                        
-                        # Respect case sensitivity setting
-                        if correct_ans.case_sensitive:
-                            if user_ans == correct_ans_text:
-                                is_correct = True
-                                break
-                        else:
-                            if user_ans.lower() == correct_ans_text.lower():
-                                is_correct = True
-                                break
-                        
-                        # Check alternative answers if any
-                        if correct_ans.alternative_answers:
-                            for alt in correct_ans.alternative_answers:
-                                alt_text = alt.strip()
-                                if correct_ans.case_sensitive:
-                                    if user_ans == alt_text:
-                                        is_correct = True
-                                        break
-                                else:
-                                    if user_ans.lower() == alt_text.lower():
-                                        is_correct = True
-                                        break
-                        if is_correct: break
+                
+                if question:
+                    # Try grading with new service (for complex types)
+                    if question.answer_data:
+                        user_val = answer.user_answer
+                        try:
+                            user_val = json.loads(answer.user_answer)
+                        except:
+                            pass
+                            
+                        grading_result = grade_question(
+                            question_type=question.question_type,
+                            user_answer=user_val,
+                            answer_data=question.answer_data,
+                            type_specific_data=question.type_specific_data
+                        )
+                        is_correct = grading_result["is_correct"]
+                    
+                    # Fallback to legacy logic
+                    elif question.answers:
+                        for correct_ans in question.answers:
+                            user_ans = answer.user_answer.strip()
+                            correct_ans_text = correct_ans.correct_answer.strip()
+                            
+                            # Respect case sensitivity setting
+                            if correct_ans.case_sensitive:
+                                if user_ans == correct_ans_text:
+                                    is_correct = True
+                                    break
+                            else:
+                                if user_ans.lower() == correct_ans_text.lower():
+                                    is_correct = True
+                                    break
+                            
+                            # Check alternative answers if any
+                            if correct_ans.alternative_answers:
+                                for alt in correct_ans.alternative_answers:
+                                    alt_text = alt.strip()
+                                    if correct_ans.case_sensitive:
+                                        if user_ans == alt_text:
+                                            is_correct = True
+                                            break
+                                    else:
+                                        if user_ans.lower() == alt_text.lower():
+                                            is_correct = True
+                                            break
+                            if is_correct: break
                 
                 existing_sub = db.query(ReadingSubmission).filter(
                     ReadingSubmission.test_attempt_id == attempt_id,

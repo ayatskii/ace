@@ -42,6 +42,10 @@ class ListeningQuestion(Base):
     instructions = Column(Text, nullable=True)
     image_url = Column(String(500), nullable=True)  # For map/diagram questions
     
+    # Type-specific configuration (varies by question_type)
+    type_specific_data = Column(JSON, nullable=True)  # Template, blanks config, items/options, etc.
+    answer_data = Column(JSON, nullable=True)  # Structured answers for complex types
+    
     # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
@@ -107,6 +111,11 @@ class ReadingQuestion(Base):
     # Additional metadata
     marks = Column(Integer, default=1, nullable=False)
     instructions = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)  # For diagram/flowchart questions
+    
+    # Type-specific configuration (varies by question_type)
+    type_specific_data = Column(JSON, nullable=True)  # Template, blanks config, items/options, etc.
+    answer_data = Column(JSON, nullable=True)  # Structured answers for complex types
     
     # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
