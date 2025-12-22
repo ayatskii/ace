@@ -143,7 +143,7 @@ export default function GradeSpeaking() {
               <audio
                 controls
                 className="w-full"
-                src={selectedSubmission.audio_url.startsWith('http') ? selectedSubmission.audio_url : `http://localhost:8000${selectedSubmission.audio_url}`}
+                src={selectedSubmission.audio_url.startsWith('http') ? selectedSubmission.audio_url : selectedSubmission.audio_url}
               >
                 Your browser does not support the audio element.
               </audio>
