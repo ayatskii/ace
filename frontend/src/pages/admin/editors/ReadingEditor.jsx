@@ -9,6 +9,7 @@ import {
   getEditorForType,
   QUESTION_TYPE_CATEGORIES 
 } from '../../../components/editors';
+import MarkdownEditor from '../../../components/common/MarkdownEditor';
 
 export default function ReadingEditor({ sectionId, testId }) {
   const [passages, setPassages] = useState([]);
@@ -382,7 +383,19 @@ export default function ReadingEditor({ sectionId, testId }) {
                   <div className="flex justify-between items-center mb-4">
                     <h5 className="text-sm font-medium text-gray-700">Questions</h5>
                     <button
-                      onClick={() => setShowAddQuestion(true)}
+                      onClick={() => {
+                        // Calculate next question number
+                        let maxQ = 0;
+                        passages.forEach(p => {
+                          if (p.questions) {
+                            p.questions.forEach(q => {
+                              if (q.question_number > maxQ) maxQ = q.question_number;
+                            });
+                          }
+                        });
+                        setQuestionForm(prev => ({ ...prev, question_number: maxQ + 1 }));
+                        setShowAddQuestion(true);
+                      }}
                       className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50"
                     >
                       + Add Question
@@ -451,13 +464,12 @@ export default function ReadingEditor({ sectionId, testId }) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <textarea
-                    required
-                    rows={10}
+                  <MarkdownEditor
                     value={passageForm.content}
                     onChange={(e) => setPassageForm({...passageForm, content: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm"
-                    placeholder="Paste passage text here..."
+                    rows={15}
+                    placeholder="Paste passage text here... (Markdown supported)"
+                    label=""
                   />
                 </div>
               </div>
@@ -552,12 +564,11 @@ export default function ReadingEditor({ sectionId, testId }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Question Text / Instructions</label>
-                <textarea
-                  required
-                  rows={2}
+                <MarkdownEditor
                   value={questionForm.question_text}
                   onChange={(e) => setQuestionForm({...questionForm, question_text: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  rows={4}
+                  placeholder="Enter question text or instructions..."
                 />
               </div>
 

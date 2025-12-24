@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import MarkdownEditor from '../common/MarkdownEditor';
 
 /**
  * CompletionEditor - Editor for completion-type questions
@@ -62,28 +66,40 @@ export default function CompletionEditor({ value, onChange, questionType }) {
   const renderPreview = () => {
     if (!template) return <p className="text-gray-400 italic">Enter template text to see preview</p>;
     
-    const parts = template.split(/(\[BLANK_\d+\])/g);
+    // Replace [BLANK_X] with markdown links [BLANK_X](blank:X)
+    // This allows ReactMarkdown to handle the structure (paragraphs, lists) correctly
+    const processedTemplate = template.replace(/\[BLANK_(\d+)\]/g, '[BLANK_$1](blank:$1)');
     
     return (
       <div className="prose max-w-none">
-        {parts.map((part, idx) => {
-          const match = part.match(/\[BLANK_(\d+)\]/);
-          if (match) {
-            const blankId = `BLANK_${match[1]}`;
-            const config = blanks.find(b => b.blank_id === blankId);
-            return (
-              <span key={idx} className="inline-block mx-1">
-                <input
-                  type="text"
-                  disabled
-                  placeholder={`_____ (${config?.max_words || 3} words max)`}
-                  className="border-b-2 border-gray-400 bg-gray-100 w-32 text-center text-sm px-1"
-                />
-              </span>
-            );
-          }
-          return <span key={idx}>{part}</span>;
-        })}
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm, remarkBreaks]}
+          components={{
+            a: ({node, ...props}) => {
+              // Check if this is a blank marker
+              if (props.href && props.href.startsWith('blank:')) {
+                const blankNum = props.href.split(':')[1];
+                const blankId = `BLANK_${blankNum}`;
+                const config = blanks.find(b => b.blank_id === blankId);
+                
+                return (
+                  <span className="inline-block mx-1">
+                    <input
+                      type="text"
+                      disabled
+                      placeholder={`_____ (${config?.max_words || 3} words max)`}
+                      className="border-b-2 border-gray-400 bg-gray-100 w-32 text-center text-sm px-1"
+                    />
+                  </span>
+                );
+              }
+              // Normal link
+              return <a target="_blank" rel="noopener noreferrer" {...props} />;
+            }
+          }}
+        >
+          {processedTemplate}
+        </ReactMarkdown>
       </div>
     );
   };
@@ -98,11 +114,10 @@ export default function CompletionEditor({ value, onChange, questionType }) {
             Use [BLANK_1], [BLANK_2], etc. for answer blanks
           </span>
         </label>
-        <textarea
+        <MarkdownEditor
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
           rows={6}
-          className="w-full border border-gray-300 rounded-lg px-4 py-3 font-mono text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           placeholder={`Example templates:
 Form: Name: [BLANK_1]  Date: [BLANK_2]
 Summary: The company was founded in [BLANK_1] by [BLANK_2].

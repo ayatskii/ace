@@ -9,6 +9,7 @@ import {
   getEditorForType,
   QUESTION_TYPE_CATEGORIES 
 } from '../../../components/editors';
+import MarkdownEditor from '../../../components/common/MarkdownEditor';
 
 export default function ListeningEditor({ sectionId, testId }) {
   const [parts, setParts] = useState([]);
@@ -396,6 +397,16 @@ export default function ListeningEditor({ sectionId, testId }) {
                   <button
                     onClick={() => {
                       setSelectedPartId(part.id);
+                      // Calculate next question number
+                      let maxQ = 0;
+                      parts.forEach(p => {
+                        if (p.questions) {
+                          p.questions.forEach(q => {
+                            if (q.question_number > maxQ) maxQ = q.question_number;
+                          });
+                        }
+                      });
+                      setQuestionForm(prev => ({ ...prev, question_number: maxQ + 1 }));
                       setShowAddQuestion(true);
                     }}
                     className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-primary-500 hover:text-primary-600 text-sm font-medium transition-colors"
@@ -530,12 +541,10 @@ export default function ListeningEditor({ sectionId, testId }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Question Text / Instructions</label>
-                <textarea
-                  required
-                  rows={2}
+                <MarkdownEditor
                   value={questionForm.question_text}
                   onChange={(e) => setQuestionForm({...questionForm, question_text: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  rows={4}
                   placeholder="Enter the main question text or instructions..."
                 />
               </div>
