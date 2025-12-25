@@ -19,7 +19,7 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     """Lifespan events"""
     print("🚀 Starting up ACE Platform...")
-    init_db()
+    # init_db()  # Database initialization is handled by Alembic migrations
     yield
     print("👋 Shutting down ACE Platform...")
 
