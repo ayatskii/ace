@@ -1,5 +1,6 @@
 export default function MCQQuestionRenderer({ question, answer, onAnswerChange }) {
-  const { options, allow_multiple } = question.type_specific_data || {};
+  const { allow_multiple } = question.type_specific_data || {};
+  const options = question.type_specific_data?.options || question.options;
   
   // answer structure:
   // Single select: "A" (string)

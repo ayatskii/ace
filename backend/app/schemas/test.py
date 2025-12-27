@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -28,8 +28,7 @@ class TestTemplateResponse(TestTemplateBase):
     created_by: Optional[int] = None
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TestTemplateWithSections(TestTemplateResponse):
     sections: List["TestSectionResponse"] = []
@@ -54,8 +53,7 @@ class TestSectionResponse(TestSectionBase):
     id: int
     test_template_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Test Result Schema
 class TestResultResponse(BaseModel):
@@ -68,8 +66,7 @@ class TestResultResponse(BaseModel):
     overall_band_score: float
     generated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Test Attempt Schemas
 class TestAttemptCreate(BaseModel):
@@ -93,8 +90,7 @@ class TestAttemptResponse(BaseModel):
     test_template: Optional[TestTemplateResponse] = None
     result: Optional[TestResultResponse] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Import after class definitions to avoid circular imports
 # These must be available at runtime for Pydantic to resolve forward references

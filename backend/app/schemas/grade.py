@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -29,8 +29,7 @@ class WritingGradeResponse(BaseModel):
     feedback_text: Optional[str]
     graded_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Speaking Grade Schemas
 class SpeakingGradeCreate(BaseModel):
@@ -59,8 +58,7 @@ class SpeakingGradeResponse(BaseModel):
     feedback_text: Optional[str]
     graded_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Test Result Schemas
 class TestResultResponse(BaseModel):
@@ -73,8 +71,7 @@ class TestResultResponse(BaseModel):
     overall_band_score: float
     generated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TestResultDetailed(TestResultResponse):
     test_attempt: "TestAttemptResponse"
@@ -98,8 +95,7 @@ class TeacherAssignmentResponse(BaseModel):
     status: str
     completed_at: Optional[datetime]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TeacherWorkload(BaseModel):
     teacher_id: int

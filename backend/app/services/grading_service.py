@@ -30,7 +30,15 @@ class GradingService:
             return 0.0
         
         avg = sum(scores) / len(scores)
-        return round(avg * 2) / 2
+        decimal_part = avg % 1
+        whole_part = int(avg)
+        
+        if decimal_part < 0.25:
+            return float(whole_part)
+        elif decimal_part < 0.75:
+            return whole_part + 0.5
+        else:
+            return float(whole_part + 1)
     
     @staticmethod
     def convert_correct_answers_to_band(correct_count: int, total: int, section_type: str) -> float:

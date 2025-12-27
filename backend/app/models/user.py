@@ -32,6 +32,7 @@ class UserProfile(Base):
     user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     date_of_birth = Column(DateTime, nullable=True)
     target_band_score = Column(Float, nullable=True)
+    preparation_level = Column(String, nullable=True)
     preferred_test_type = Column(String, nullable=True)
     
     user = relationship("User", back_populates="profile")

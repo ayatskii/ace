@@ -25,17 +25,22 @@ export default function TableEditor({ value, onChange }) {
   // Auto-detect blanks in table cells
   useEffect(() => {
     const detectedBlanks = [];
+    const seenIds = new Set();
+    
     rows.forEach(row => {
       row.forEach(cell => {
         const matches = [...cell.matchAll(/\[BLANK_(\d+)\]/g)];
         matches.forEach(match => {
           const blankId = `BLANK_${match[1]}`;
-          const existing = blanks.find(b => b.blank_id === blankId);
-          detectedBlanks.push(existing || {
-            blank_id: blankId,
-            max_words: 3,
-            case_sensitive: false
-          });
+          if (!seenIds.has(blankId)) {
+            seenIds.add(blankId);
+            const existing = blanks.find(b => b.blank_id === blankId);
+            detectedBlanks.push(existing || {
+              blank_id: blankId,
+              max_words: 3,
+              case_sensitive: false
+            });
+          }
         });
       });
     });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -14,9 +14,10 @@ import remarkBreaks from 'remark-breaks';
  */
 export default function MarkdownEditor({ value, onChange, placeholder, rows = 6, label, className = '' }) {
   const [activeTab, setActiveTab] = useState('write'); // 'write' | 'preview'
+  const textareaRef = useRef(null);
 
   const insertText = (before, after = '') => {
-    const textarea = document.getElementById(`markdown-editor-${label || 'default'}`);
+    const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
@@ -119,6 +120,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, rows = 6,
         <div className="p-0">
           {activeTab === 'write' ? (
             <textarea
+              ref={textareaRef}
               id={`markdown-editor-${label || 'default'}`}
               value={value}
               onChange={onChange}

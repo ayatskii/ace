@@ -1,5 +1,6 @@
 export default function MatchingQuestionRenderer({ question, answer, onAnswerChange }) {
-  const { items, options, allow_option_reuse } = question.type_specific_data || {};
+  const { items, allow_option_reuse } = question.type_specific_data || {};
+  const options = question.type_specific_data?.options || question.options;
   
   // answer is expected to be: { [itemNumber]: optionLabel }
 

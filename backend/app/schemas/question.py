@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List, Dict, Any
 
 # Question Type Template Schemas
 class QuestionTypeTemplateResponse(BaseModel):
@@ -11,8 +11,7 @@ class QuestionTypeTemplateResponse(BaseModel):
     instructions: Optional[str]
     is_active: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Question Option Schema
 class QuestionOptionCreate(BaseModel):
@@ -41,8 +40,7 @@ class ListeningPartResponse(ListeningPartBase):
     id: int
     section_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Listening Question Schemas
 class ListeningQuestionBase(BaseModel):
@@ -54,6 +52,8 @@ class ListeningQuestionBase(BaseModel):
     marks: int = Field(default=1, ge=1)
     instructions: Optional[str] = None
     image_url: Optional[str] = None
+    type_specific_data: Optional[Dict[str, Any]] = None
+    answer_data: Optional[Dict[str, Any]] = None
 
 class ListeningQuestionCreate(ListeningQuestionBase):
     section_id: int
@@ -78,8 +78,7 @@ class ListeningQuestionResponse(ListeningQuestionBase):
     image_url: Optional[str] = None
     options: Optional[List[dict]] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Listening Answer Schemas
 class ListeningAnswerCreate(BaseModel):
@@ -99,8 +98,7 @@ class ListeningAnswerResponse(BaseModel):
     alternative_answers: Optional[List[str]]
     case_sensitive: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ListeningQuestionWithAnswer(ListeningQuestionResponse):
     answers: List[ListeningAnswerResponse] = []
@@ -132,8 +130,7 @@ class ReadingPassageResponse(ReadingPassageBase):
     section_id: int
     word_count: Optional[int]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReadingPassageWithQuestions(ReadingPassageResponse):
     questions: List["ReadingQuestionResponse"] = []
@@ -147,6 +144,8 @@ class ReadingQuestionBase(BaseModel):
     has_options: bool = False
     marks: int = Field(default=1, ge=1)
     instructions: Optional[str] = None
+    type_specific_data: Optional[Dict[str, Any]] = None
+    answer_data: Optional[Dict[str, Any]] = None
 
 class ReadingQuestionCreate(ReadingQuestionBase):
     passage_id: int
@@ -161,14 +160,17 @@ class ReadingQuestionUpdate(BaseModel):
     options: Optional[List[QuestionOptionCreate]] = None
     marks: Optional[int] = Field(None, ge=1)
     instructions: Optional[str] = None
+    type_specific_data: Optional[Dict[str, Any]] = None
+    answer_data: Optional[Dict[str, Any]] = None
 
 class ReadingQuestionResponse(ReadingQuestionBase):
     id: int
     passage_id: int
     options: Optional[List[dict]] = None
+    type_specific_data: Optional[Dict[str, Any]] = None
+    answer_data: Optional[Dict[str, Any]] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Reading Answer Schemas
 class ReadingAnswerCreate(BaseModel):
@@ -188,8 +190,7 @@ class ReadingAnswerResponse(BaseModel):
     alternative_answers: Optional[List[str]]
     case_sensitive: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReadingQuestionWithAnswer(ReadingQuestionResponse):
     answers: List[ReadingAnswerResponse] = []
@@ -226,8 +227,7 @@ class WritingTaskResponse(WritingTaskBase):
     id: int
     section_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Speaking Task Schemas
 class SpeakingTaskBase(BaseModel):
@@ -257,8 +257,7 @@ class SpeakingTaskResponse(SpeakingTaskBase):
     id: int
     section_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Batch Creation Schemas
 class BatchQuestionsCreate(BaseModel):

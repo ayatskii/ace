@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 from typing import Optional
 
@@ -29,8 +29,7 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class UserWithProfile(UserResponse):
     profile: Optional["UserProfileResponse"] = None
@@ -52,8 +51,7 @@ class UserProfileResponse(UserProfileBase):
     id: int
     user_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Authentication Schemas
 class Token(BaseModel):

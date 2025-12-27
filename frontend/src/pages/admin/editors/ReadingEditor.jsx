@@ -27,6 +27,7 @@ export default function ReadingEditor({ sectionId, testId }) {
 
   // Question Form State
   const [showAddQuestion, setShowAddQuestion] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [questionForm, setQuestionForm] = useState({
     question_number: 1,
     question_type: 'reading_multiple_choice',
@@ -152,8 +153,13 @@ export default function ReadingEditor({ sectionId, testId }) {
     }
 
     try {
-      await apiClient.post('/reading/questions', payload);
+      if (editingQuestionId) {
+        await apiClient.put(`/reading/questions/${editingQuestionId}`, payload);
+      } else {
+        await apiClient.post('/reading/questions', payload);
+      }
       setShowAddQuestion(false);
+      setEditingQuestionId(null);
       fetchPassageDetails(expandedPassage);
       // Reset form
       setQuestionForm({
@@ -182,6 +188,23 @@ export default function ReadingEditor({ sectionId, testId }) {
     } catch (error) {
       console.error('Failed to delete question:', error);
     }
+  };
+
+  const handleEditQuestion = (question) => {
+    setEditingQuestionId(question.id);
+    setQuestionForm({
+      question_number: question.question_number,
+      question_type: question.question_type,
+      question_text: question.question_text,
+      marks: question.marks,
+      options: question.options || [],
+      correct_answer: question.answers?.[0]?.correct_answer || '',
+      correct_answers: question.answer_data?.correct_options || [], 
+      allow_multiple: question.type_specific_data?.allow_multiple || false,
+      type_specific_data: question.type_specific_data || {},
+      answer_data: question.answer_data || {}
+    });
+    setShowAddQuestion(true);
   };
 
   // Render the appropriate editor based on selected type
@@ -394,6 +417,7 @@ export default function ReadingEditor({ sectionId, testId }) {
                           }
                         });
                         setQuestionForm(prev => ({ ...prev, question_number: maxQ + 1 }));
+                        setEditingQuestionId(null); // Reset editing state
                         setShowAddQuestion(true);
                       }}
                       className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50"
@@ -414,12 +438,20 @@ export default function ReadingEditor({ sectionId, testId }) {
                           </div>
                           <p className="text-sm text-gray-800">{q.question_text}</p>
                         </div>
-                        <button 
-                          onClick={() => handleDeleteQuestion(q.id)}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleEditQuestion(q)}
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteQuestion(q.id)}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     ))}
                     {(!passage.questions || passage.questions.length === 0) && (
@@ -497,7 +529,7 @@ export default function ReadingEditor({ sectionId, testId }) {
       {showAddQuestion && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add Question to Passage</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">{editingQuestionId ? 'Edit Question' : 'Add Question to Passage'}</h3>
             <form onSubmit={handleSaveQuestion} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>

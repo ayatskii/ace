@@ -170,18 +170,33 @@ export default function TestAttempt() {
     switch (question.question_type) {
       case 'listening_fill_in_blank':
       case 'listening_note_completion':
+      case 'listening_form_completion':
+      case 'listening_sentence_completion':
+      case 'listening_summary_completion':
       case 'reading_sentence_completion':
       case 'reading_summary_completion':
+      case 'reading_note_completion':
+      case 'reading_form_completion':
       case 'reading_short_answer': 
+      case 'listening_short_answer':
         return <CompletionQuestionRenderer {...commonProps} />;
       
       case 'listening_matching':
+      case 'listening_matching_headings':
+      case 'listening_matching_sentence_endings':
+      case 'listening_matching_paragraphs':
+      case 'listening_name_matching':
       case 'reading_matching_headings':
       case 'reading_matching_information':
+      case 'reading_matching_features':
+      case 'reading_matching_sentence_endings':
         return <MatchingQuestionRenderer {...commonProps} />;
       
       case 'listening_map_diagram':
+      case 'listening_diagram_labeling':
+      case 'listening_map_labeling':
       case 'reading_diagram_labeling':
+      case 'reading_flowchart':
         return <DiagramQuestionRenderer {...commonProps} />;
       
       case 'listening_true_false_not_given':

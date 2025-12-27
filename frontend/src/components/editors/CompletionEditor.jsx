@@ -25,15 +25,21 @@ export default function CompletionEditor({ value, onChange, questionType }) {
     const regex = /\[BLANK_(\d+)\]/g;
     const matches = [...template.matchAll(regex)];
     
-    const detectedBlanks = matches.map(match => {
+    const detectedBlanks = [];
+    const seenIds = new Set();
+    
+    matches.forEach(match => {
       const blankId = `BLANK_${match[1]}`;
-      // Preserve existing config if blank already exists
-      const existing = blanks.find(b => b.blank_id === blankId);
-      return existing || {
-        blank_id: blankId,
-        max_words: 3,
-        case_sensitive: false
-      };
+      if (!seenIds.has(blankId)) {
+        seenIds.add(blankId);
+        // Preserve existing config if blank already exists
+        const existing = blanks.find(b => b.blank_id === blankId);
+        detectedBlanks.push(existing || {
+          blank_id: blankId,
+          max_words: 3,
+          case_sensitive: false
+        });
+      }
     });
     
     setBlanks(detectedBlanks);

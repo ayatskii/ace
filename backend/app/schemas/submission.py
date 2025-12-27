@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, List
 
@@ -19,8 +19,7 @@ class ListeningSubmissionResponse(BaseModel):
     is_correct: bool
     submitted_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Reading Submission Schemas
 class ReadingSubmissionCreate(BaseModel):
@@ -39,8 +38,7 @@ class ReadingSubmissionResponse(BaseModel):
     is_correct: bool
     submitted_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Writing Submission Schemas
 class WritingSubmissionCreate(BaseModel):
@@ -66,8 +64,7 @@ class WritingSubmissionResponse(BaseModel):
     student_name: Optional[str] = None
     student_email: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class WritingSubmissionWithGrade(WritingSubmissionResponse):
     grade: Optional["WritingGradeResponse"] = None
@@ -98,8 +95,7 @@ class SpeakingSubmissionResponse(BaseModel):
     student_name: Optional[str] = None
     student_email: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SpeakingSubmissionWithGrade(SpeakingSubmissionResponse):
     grade: Optional["SpeakingGradeResponse"] = None
