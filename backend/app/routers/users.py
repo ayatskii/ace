@@ -317,6 +317,16 @@ def delete_user(
             detail="User not found"
         )
     
+    # Check for related records that would prevent deletion
+    from app.models import TestTemplate
+    
+    created_tests = db.query(TestTemplate).filter(TestTemplate.created_by == user_id).count()
+    if created_tests > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete user: user has created {created_tests} test(s). Reassign or delete tests first."
+        )
+    
     db.delete(user)
     db.commit()
     

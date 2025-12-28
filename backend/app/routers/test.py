@@ -189,6 +189,14 @@ def delete_test_template(
             detail="Test template not found"
         )
     
+    # Check for related test attempts
+    attempt_count = db.query(TestAttempt).filter(TestAttempt.test_template_id == test_id).count()
+    if attempt_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete test: {attempt_count} student attempt(s) exist. Delete attempts first or archive the test."
+        )
+    
     db.delete(test)
     db.commit()
     
