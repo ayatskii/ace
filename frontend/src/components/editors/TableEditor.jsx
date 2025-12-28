@@ -4,7 +4,7 @@ export default function TableEditor({ value, onChange }) {
   const [headers, setHeaders] = useState(value?.table_structure?.headers || ['Column 1', 'Column 2']);
   const [rows, setRows] = useState(value?.table_structure?.rows || [['', '']]);
   const [blanks, setBlanks] = useState(value?.blanks || []);
-  const [answers, setAnswers] = useState(value?.answers || {});
+  const [answers, setAnswers] = useState(value?.answers?.blanks || {});
 
   // Update parent when local state changes
   useEffect(() => {
@@ -100,8 +100,8 @@ export default function TableEditor({ value, onChange }) {
         <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
           <h4 className="font-medium text-gray-900">Table Structure</h4>
           <div className="space-x-2">
-            <button onClick={addColumn} className="text-sm text-primary-600 hover:text-primary-700 font-medium">+ Add Column</button>
-            <button onClick={addRow} className="text-sm text-primary-600 hover:text-primary-700 font-medium">+ Add Row</button>
+            <button type="button" onClick={addColumn} className="text-sm text-primary-600 hover:text-primary-700 font-medium">+ Add Column</button>
+            <button type="button" onClick={addRow} className="text-sm text-primary-600 hover:text-primary-700 font-medium">+ Add Row</button>
           </div>
         </div>
         
@@ -119,7 +119,7 @@ export default function TableEditor({ value, onChange }) {
                         className="w-full border-gray-300 rounded text-sm font-bold"
                         placeholder="Header"
                       />
-                      <button onClick={() => removeColumn(idx)} className="text-red-400 hover:text-red-600">×</button>
+                      <button type="button" onClick={() => removeColumn(idx)} className="text-red-400 hover:text-red-600">×</button>
                     </div>
                   </th>
                 ))}
@@ -141,7 +141,7 @@ export default function TableEditor({ value, onChange }) {
                     </td>
                   ))}
                   <td className="px-2 text-center">
-                    <button onClick={() => removeRow(rowIdx)} className="text-red-400 hover:text-red-600">×</button>
+                    <button type="button" onClick={() => removeRow(rowIdx)} className="text-red-400 hover:text-red-600">×</button>
                   </td>
                 </tr>
               ))}
@@ -222,21 +222,31 @@ function AnswerInput({ answers, onChange }) {
 
   return (
     <div className="space-y-2">
+      {/* Existing answers */}
       <div className="flex flex-wrap gap-2">
         {answers.map((answer, idx) => (
-          <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 border border-gray-200">
+          <span
+            key={idx}
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+              idx === 0 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+          >
+            {idx === 0 && <span className="text-xs font-medium">(Primary)</span>}
             {answer}
             <button type="button" onClick={() => handleRemoveAnswer(idx)} className="ml-1 text-gray-400 hover:text-red-500">×</button>
           </span>
         ))}
       </div>
+      {/* Add new answer */}
       <div className="flex gap-2">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Add answer..."
+          placeholder={answers.length === 0 ? "Enter primary answer..." : "Add alternative answer..."}
           className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
         />
         <button

@@ -17,6 +17,7 @@ export default function ListeningEditor({ sectionId, testId }) {
   const [showAddPart, setShowAddPart] = useState(false);
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [selectedPartId, setSelectedPartId] = useState(null);
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
   
   // Part Form State
   const [partForm, setPartForm] = useState({
@@ -132,7 +133,7 @@ export default function ListeningEditor({ sectionId, testId }) {
       },
       answer: {
         // For simple types, we might still use this, but for complex types it's in answer_data
-        correct_answer: questionForm.correct_answer || 'See answer_data',
+        correct_answer: questionForm.correct_answer || '-',
         case_sensitive: false
       }
     };
@@ -160,8 +161,13 @@ export default function ListeningEditor({ sectionId, testId }) {
     }
 
     try {
-      await apiClient.post('/listening/questions', payload);
+      if (editingQuestionId) {
+        await apiClient.put(`/listening/questions/${editingQuestionId}`, payload);
+      } else {
+        await apiClient.post('/listening/questions', payload);
+      }
       setShowAddQuestion(false);
+      setEditingQuestionId(null);
       fetchParts();
       
       // Reset form
@@ -193,6 +199,24 @@ export default function ListeningEditor({ sectionId, testId }) {
     }
   };
 
+  const handleEditQuestion = (question, partId) => {
+    setEditingQuestionId(question.id);
+    setSelectedPartId(partId);
+    setQuestionForm({
+      question_number: question.question_number,
+      question_type: question.question_type,
+      question_text: question.question_text,
+      marks: question.marks,
+      options: question.options || [],
+      correct_answer: question.answers?.[0]?.correct_answer || '',
+      correct_answers: question.answer_data?.correct_options || [],
+      allow_multiple: question.type_specific_data?.allow_multiple || false,
+      type_specific_data: question.type_specific_data || {},
+      answer_data: question.answer_data || {}
+    });
+    setShowAddQuestion(true);
+  };
+
   // Render the appropriate editor based on selected type
   const renderEditor = () => {
     const editorType = getEditorForType(questionForm.question_type);
@@ -206,7 +230,8 @@ export default function ListeningEditor({ sectionId, testId }) {
         setQuestionForm(prev => ({
           ...prev,
           type_specific_data: { ...prev.type_specific_data, ...data.type_specific_data },
-          answer_data: { ...prev.answer_data, ...data.answer_data }
+          // Replace answer_data entirely to prevent double-nesting
+          answer_data: data.answer_data || prev.answer_data
         }));
       },
       questionType: questionForm.question_type
@@ -385,12 +410,20 @@ export default function ListeningEditor({ sectionId, testId }) {
                         </div>
                         <p className="text-sm text-gray-800">{q.question_text}</p>
                       </div>
-                      <button 
-                        onClick={() => handleDeleteQuestion(q.id)}
-                        className="text-gray-400 hover:text-red-600"
-                      >
-                        ×
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          onClick={() => handleEditQuestion(q, part.id)}
+                          className="text-blue-600 hover:text-blue-800 text-xs"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          className="text-red-600 hover:text-red-800 text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                   
@@ -407,6 +440,7 @@ export default function ListeningEditor({ sectionId, testId }) {
                         }
                       });
                       setQuestionForm(prev => ({ ...prev, question_number: maxQ + 1 }));
+                      setEditingQuestionId(null);
                       setShowAddQuestion(true);
                     }}
                     className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-primary-500 hover:text-primary-600 text-sm font-medium transition-colors"
@@ -478,7 +512,7 @@ export default function ListeningEditor({ sectionId, testId }) {
       {showAddQuestion && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 m-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Add Question</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">{editingQuestionId ? 'Edit Question' : 'Add Question'}</h3>
             
             <form onSubmit={handleCreateQuestion} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">

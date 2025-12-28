@@ -16,7 +16,7 @@ export default function TFNGEditor({ value, onChange, questionType }) {
     value?.answer_type || 
     (questionType?.includes('yes_no') ? 'yes_no_not_given' : 'true_false_not_given')
   );
-  const [answers, setAnswers] = useState(value?.answers || {});
+  const [answers, setAnswers] = useState(value?.answers?.answers || {});
 
   // Get options based on answer type
   const getOptions = () => {

@@ -69,8 +69,6 @@ class QuestionTypeEnum(str, enum.Enum):
     SPEAKING_PART2 = "speaking_part2"  # Long turn (cue card)
     SPEAKING_PART3 = "speaking_part3"  # Discussion
 
-
-# Helper function to get question family from type
 def get_question_family(question_type: str) -> str:
     """Returns the question family for routing to appropriate editor/grader"""
     completion_types = [

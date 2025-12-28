@@ -134,15 +134,28 @@ def seed_db():
                         order=q_num,
                         marks=1,
                         has_options=(q_type == "listening_multiple_choice"),
-                        options=[{"label": "A", "text": "Option A"}, {"label": "B", "text": "Option B"}, {"label": "C", "text": "Option C"}] if q_type == "listening_multiple_choice" else None,
+                        options=[{"option_label": "A", "option_text": "Option A"}, {"option_label": "B", "option_text": "Option B"}, {"option_label": "C", "option_text": "Option C"}] if q_type == "listening_multiple_choice" else None,
                         type_specific_data={
                             "template_text": "Field: [BLANK_1]",
                             "blanks": [{"blank_id": "BLANK_1", "max_words": 2}]
                         } if "completion" in q_type else (
                             {
                                 "items": [{"item_number": q_num, "item_text": "Item to match"}],
+                                "options": [
+                                    {"option_label": "A", "option_text": "Answer Option A"},
+                                    {"option_label": "B", "option_text": "Answer Option B"},
+                                    {"option_label": "C", "option_text": "Answer Option C"},
+                                    {"option_label": "D", "option_text": "Answer Option D"}
+                                ],
                                 "allow_option_reuse": False
-                            } if "matching" in q_type else {}
+                            } if "matching" in q_type else {
+                                "options": [
+                                    {"option_label": "A", "option_text": "Option A"},
+                                    {"option_label": "B", "option_text": "Option B"},
+                                    {"option_label": "C", "option_text": "Option C"}
+                                ],
+                                "allow_multiple": False
+                            }
                         ),
                         answer_data={
                             "blanks": {"BLANK_1": ["Answer"]}
@@ -195,18 +208,33 @@ def seed_db():
                         order=q_num,
                         marks=1,
                         has_options=(q_type == "reading_multiple_choice"),
-                        options=[{"label": "A", "text": "A"}, {"label": "B", "text": "B"}, {"label": "C", "text": "C"}, {"label": "D", "text": "D"}] if q_type == "reading_multiple_choice" else None,
+                        options=[{"option_label": "A", "option_text": "Option A"}, {"option_label": "B", "option_text": "Option B"}, {"option_label": "C", "option_text": "Option C"}, {"option_label": "D", "option_text": "Option D"}] if q_type == "reading_multiple_choice" else None,
                         type_specific_data={
-                            "statements": [{"statement_number": 1, "statement_text": "Statement..."}]
+                            "statements": [{"statement_number": 1, "statement_text": "Statement..."}],
+                            "answer_type": "true_false_not_given"
                         } if "true_false" in q_type else (
                             {
                                 "items": [{"item_number": q_num, "item_text": "Item to match"}],
+                                "options": [
+                                    {"option_label": "A", "option_text": "Heading Option A"},
+                                    {"option_label": "B", "option_text": "Heading Option B"},
+                                    {"option_label": "C", "option_text": "Heading Option C"},
+                                    {"option_label": "D", "option_text": "Heading Option D"}
+                                ],
                                 "allow_option_reuse": False
                             } if "matching" in q_type else (
                                 {
                                     "template_text": "Summary: [BLANK_1]",
                                     "blanks": [{"blank_id": "BLANK_1", "max_words": 2}]
-                                } if "completion" in q_type else {}
+                                } if "completion" in q_type else {
+                                    "options": [
+                                        {"option_label": "A", "option_text": "Option A"},
+                                        {"option_label": "B", "option_text": "Option B"},
+                                        {"option_label": "C", "option_text": "Option C"},
+                                        {"option_label": "D", "option_text": "Option D"}
+                                    ],
+                                    "allow_multiple": False
+                                }
                             )
                         ),
                         answer_data={

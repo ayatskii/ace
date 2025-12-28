@@ -548,7 +548,7 @@ def submit_test_attempt(
                 
                 if question:
                     # Try grading with new service (for complex types)
-                    if question.answer_data:
+                    if question.answer_data is not None:
                         user_val = answer.user_answer
                         try:
                             user_val = json.loads(answer.user_answer)
@@ -622,7 +622,7 @@ def submit_test_attempt(
                 
                 if question:
                     # Try grading with new service (for complex types)
-                    if question.answer_data:
+                    if question.answer_data is not None:
                         user_val = answer.user_answer
                         try:
                             user_val = json.loads(answer.user_answer)
@@ -703,26 +703,54 @@ def calculate_initial_results(attempt_id: int, db: Session):
     """
     Calculate scores for auto-graded sections (Listening & Reading)
     and create the initial TestResult record.
-    """
-    from app.models import ListeningSubmission, ReadingSubmission, TestResult
     
-    # Calculate Listening Score
-    listening_correct = db.query(ListeningSubmission).filter(
+    Scores are calculated based on the sum of marks for correctly answered questions.
+    """
+    from app.models import ListeningSubmission, ReadingSubmission, TestResult, ListeningQuestion, ReadingQuestion
+    from sqlalchemy import func
+    
+    # Calculate Listening Score - sum of marks for correct answers
+    listening_score_result = db.query(func.coalesce(func.sum(ListeningQuestion.marks), 0)).join(
+        ListeningSubmission,
+        ListeningSubmission.question_id == ListeningQuestion.id
+    ).filter(
         ListeningSubmission.test_attempt_id == attempt_id,
         ListeningSubmission.is_correct == True
-    ).count()
+    ).scalar()
+    listening_correct = int(listening_score_result or 0)
+    
+    # Get total possible listening marks
+    listening_total = db.query(func.coalesce(func.sum(ListeningQuestion.marks), 40)).join(
+        ListeningSubmission,
+        ListeningSubmission.question_id == ListeningQuestion.id
+    ).filter(
+        ListeningSubmission.test_attempt_id == attempt_id
+    ).scalar()
+    listening_total = int(listening_total or 40)
     
     # Simple band score mapping (approximate)
-    # In a real app, this would use a lookup table based on the specific test version
-    listening_score = min(9.0, round((listening_correct / 40) * 9 * 2) / 2) if listening_correct > 0 else 0.0
+    listening_score = min(9.0, round((listening_correct / max(listening_total, 1)) * 9 * 2) / 2) if listening_correct > 0 else 0.0
     
-    # Calculate Reading Score
-    reading_correct = db.query(ReadingSubmission).filter(
+    # Calculate Reading Score - sum of marks for correct answers
+    reading_score_result = db.query(func.coalesce(func.sum(ReadingQuestion.marks), 0)).join(
+        ReadingSubmission,
+        ReadingSubmission.question_id == ReadingQuestion.id
+    ).filter(
         ReadingSubmission.test_attempt_id == attempt_id,
         ReadingSubmission.is_correct == True
-    ).count()
+    ).scalar()
+    reading_correct = int(reading_score_result or 0)
     
-    reading_score = min(9.0, round((reading_correct / 40) * 9 * 2) / 2) if reading_correct > 0 else 0.0
+    # Get total possible reading marks
+    reading_total = db.query(func.coalesce(func.sum(ReadingQuestion.marks), 40)).join(
+        ReadingSubmission,
+        ReadingSubmission.question_id == ReadingQuestion.id
+    ).filter(
+        ReadingSubmission.test_attempt_id == attempt_id
+    ).scalar()
+    reading_total = int(reading_total or 40)
+    
+    reading_score = min(9.0, round((reading_correct / max(reading_total, 1)) * 9 * 2) / 2) if reading_correct > 0 else 0.0
     
     # Create or Update TestResult
     result = db.query(TestResult).filter(TestResult.test_attempt_id == attempt_id).first()
@@ -742,6 +770,7 @@ def calculate_initial_results(attempt_id: int, db: Session):
         result.reading_score = reading_score
         
     db.commit()
+
 
 @router.delete("/attempts/{attempt_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_test_attempt(

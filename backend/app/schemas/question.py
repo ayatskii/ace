@@ -70,6 +70,8 @@ class ListeningQuestionUpdate(BaseModel):
     marks: Optional[int] = Field(None, ge=1)
     instructions: Optional[str] = None
     image_url: Optional[str] = None
+    type_specific_data: Optional[Dict[str, Any]] = None
+    answer_data: Optional[Dict[str, Any]] = None
 
 class ListeningQuestionResponse(ListeningQuestionBase):
     id: int

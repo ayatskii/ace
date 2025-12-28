@@ -220,7 +220,8 @@ export default function ReadingEditor({ sectionId, testId }) {
         setQuestionForm(prev => ({
           ...prev,
           type_specific_data: { ...prev.type_specific_data, ...data.type_specific_data },
-          answer_data: { ...prev.answer_data, ...data.answer_data }
+          // Replace answer_data entirely to prevent double-nesting
+          answer_data: data.answer_data || prev.answer_data
         }));
       },
       questionType: questionForm.question_type

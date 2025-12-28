@@ -22,7 +22,7 @@ export default function TestAttempt() {
   const [testStructure, setTestStructure] = useState(null);
   
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); // Index within the current section's questions
+  const [currentItemIndex, setCurrentItemIndex] = useState(0); // Part/Passage/Task index within section
   const [answers, setAnswers] = useState({}); // { questionId: answerValue }
 
   useEffect(() => {
@@ -31,17 +31,6 @@ export default function TestAttempt() {
         const response = await apiClient.get(`/tests/attempts/${attemptId}`);
         setAttempt(response.data);
         setTestStructure(response.data.test_structure);
-        
-        // Load existing answers if any
-        if (response.data.answers) {
-            // Transform array of answers to object { questionId: value }
-            const answerMap = {};
-            // This depends on how backend returns answers. Assuming it might return them in the attempt object
-            // or we might need to fetch them. For now, let's assume we start empty or backend populates it.
-            // If backend returns 'current_state' or similar, use that.
-            // For now, we'll rely on what's in the response or start empty.
-        }
-        
         setLoading(false);
       } catch (err) {
         console.error('Failed to fetch attempt:', err);
@@ -59,36 +48,57 @@ export default function TestAttempt() {
   const sections = attempt.test_template.sections.sort((a, b) => a.order - b.order);
   const currentSection = sections[currentSectionIndex];
 
-  // Helper to get questions for current section
-  const getSectionQuestions = () => {
+  // Get the navigation items for current section (parts, passages, or tasks)
+  const getSectionItems = () => {
     if (!testStructure) return [];
-    if (currentSection.section_type === 'listening') return testStructure.listening_questions.sort((a, b) => a.order - b.order);
-    if (currentSection.section_type === 'reading') return testStructure.reading_questions.sort((a, b) => a.order - b.order);
-    // Writing and Speaking have tasks, treat as questions for navigation
-    if (currentSection.section_type === 'writing') return testStructure.writing_tasks.sort((a, b) => a.task_number - b.task_number);
-    if (currentSection.section_type === 'speaking') return testStructure.speaking_tasks.sort((a, b) => a.order - b.order);
+    if (currentSection.section_type === 'listening') {
+      return testStructure.listening_parts.sort((a, b) => a.part_number - b.part_number);
+    }
+    if (currentSection.section_type === 'reading') {
+      return testStructure.reading_passages.sort((a, b) => a.order - b.order);
+    }
+    if (currentSection.section_type === 'writing') {
+      return testStructure.writing_tasks.sort((a, b) => a.task_number - b.task_number);
+    }
+    if (currentSection.section_type === 'speaking') {
+      return testStructure.speaking_tasks.sort((a, b) => a.order - b.order);
+    }
     return [];
   };
 
-  const questions = getSectionQuestions();
-  const currentQuestion = questions[currentQuestionIndex];
+  // Get questions for a specific part (listening)
+  const getQuestionsForPart = (partId) => {
+    return testStructure.listening_questions
+      .filter(q => q.part_id === partId)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  // Get questions for a specific passage (reading)
+  const getQuestionsForPassage = (passageId) => {
+    return testStructure.reading_questions
+      .filter(q => q.passage_id === passageId)
+      .sort((a, b) => a.order - b.order);
+  };
+
+  const items = getSectionItems();
+  const currentItem = items[currentItemIndex];
 
   const handleNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    if (currentItemIndex < items.length - 1) {
+      setCurrentItemIndex(currentItemIndex + 1);
     }
   };
 
   const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    if (currentItemIndex > 0) {
+      setCurrentItemIndex(currentItemIndex - 1);
     }
   };
 
   const handleSectionFinish = () => {
     if (currentSectionIndex < sections.length - 1) {
       setCurrentSectionIndex(currentSectionIndex + 1);
-      setCurrentQuestionIndex(0);
+      setCurrentItemIndex(0);
     } else {
       handleSubmitTest();
     }
@@ -104,7 +114,6 @@ export default function TestAttempt() {
   const handleSubmitTest = async () => {
     try {
       if (window.confirm("Are you sure you want to submit the test?")) {
-        // Categorize answers
         const writingAnswers = [];
         const listeningAnswers = [];
         const readingAnswers = [];
@@ -118,7 +127,6 @@ export default function TestAttempt() {
             } else {
                 const qId = parseInt(key);
                 
-                // Check Listening
                 const isListening = testStructure.listening_questions.some(q => q.id === qId);
                 if (isListening) {
                     listeningAnswers.push({
@@ -128,7 +136,6 @@ export default function TestAttempt() {
                     return;
                 }
 
-                // Check Reading
                 const isReading = testStructure.reading_questions.some(q => q.id === qId);
                 if (isReading) {
                     readingAnswers.push({
@@ -213,7 +220,6 @@ export default function TestAttempt() {
         return <MCQQuestionRenderer {...commonProps} />;
 
       default:
-        // Fallback for unknown types
         return (
           <div className="space-y-3">
              <p className="text-red-500">Unknown question type: {question.question_type}</p>
@@ -224,80 +230,113 @@ export default function TestAttempt() {
 
   // Render content based on section type
   const renderContent = () => {
-    if (!currentQuestion) return <div>No questions in this section.</div>;
+    if (!currentItem) return <div>No content in this section.</div>;
 
+    // LISTENING: Show Part with audio + all questions for this part
     if (currentSection.section_type === 'listening') {
-      // Find the part for this question to show audio
-      const part = testStructure.listening_parts.find(p => p.id === currentQuestion.part_id);
+      const questions = getQuestionsForPart(currentItem.id);
       return (
         <div className="space-y-6">
-          {part && (
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <h3 className="font-semibold mb-2">Part {part.part_number} Audio</h3>
-              <audio controls src={part.audio_url} className="w-full" />
-            </div>
-          )}
-          <div className="bg-white p-6 rounded-lg border border-gray-200">
-            <h3 className="text-lg font-medium mb-4">{currentQuestion.question_number}. {currentQuestion.question_text}</h3>
-            {currentQuestion.image_url && (
-               <img src={currentQuestion.image_url} alt="Question Diagram" className="mb-4 max-h-64 object-contain" />
+          {/* Part Header with Audio */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+            <h3 className="text-xl font-bold text-blue-900 mb-3">Part {currentItem.part_number}</h3>
+            <audio controls src={currentItem.audio_url} className="w-full" />
+            {currentItem.transcript && (
+              <details className="mt-3">
+                <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">Show Transcript</summary>
+                <div className="mt-2 p-3 bg-white rounded border text-sm text-gray-700 whitespace-pre-wrap">
+                  {currentItem.transcript}
+                </div>
+              </details>
             )}
-            
-            {renderQuestionContent(currentQuestion)}
+          </div>
+          
+          {/* All Questions for this Part */}
+          <div className="space-y-6">
+            {questions.map((question, idx) => (
+              <div key={question.id} className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    {question.question_number}
+                  </span>
+                  <h4 className="text-lg font-medium text-gray-900">{question.question_text}</h4>
+                </div>
+                {question.image_url && (
+                  <img src={question.image_url} alt="Question Diagram" className="mb-4 max-h-64 object-contain rounded-lg" />
+                )}
+                {renderQuestionContent(question)}
+              </div>
+            ))}
           </div>
         </div>
       );
     }
 
+    // READING: Show Passage (left) + all questions for this passage (right)
     if (currentSection.section_type === 'reading') {
-      const passage = testStructure.reading_passages.find(p => p.id === currentQuestion.passage_id);
+      const questions = getQuestionsForPassage(currentItem.id);
       return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+          {/* Passage Content */}
           <div className="overflow-y-auto pr-4 border-r border-gray-200">
-             <h3 className="font-bold text-xl mb-4">{passage?.title}</h3>
-             <div className="prose max-w-none text-gray-800 whitespace-pre-wrap">{passage?.content}</div>
-          </div>
-          <div className="overflow-y-auto pl-2">
-            <div className="bg-white p-6 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-medium mb-4">{currentQuestion.question_number}. {currentQuestion.question_text}</h3>
-              
-              {renderQuestionContent(currentQuestion)}
+            <div className="sticky top-0 bg-white pb-2 border-b border-gray-100 mb-4">
+              <h3 className="font-bold text-xl text-gray-900">{currentItem.title}</h3>
+              <p className="text-sm text-gray-500">Passage {currentItem.passage_number}</p>
             </div>
+            <div className="prose max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed">
+              {currentItem.content}
+            </div>
+          </div>
+          
+          {/* All Questions for this Passage */}
+          <div className="overflow-y-auto pl-2 space-y-6">
+            {questions.map((question, idx) => (
+              <div key={question.id} className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex items-start gap-3 mb-4">
+                  <span className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    {question.question_number}
+                  </span>
+                  <h4 className="text-lg font-medium text-gray-900">{question.question_text}</h4>
+                </div>
+                {renderQuestionContent(question)}
+              </div>
+            ))}
           </div>
         </div>
       );
     }
 
+    // WRITING: Keep as-is (task by task)
     if (currentSection.section_type === 'writing') {
       return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-gray-50 p-6 rounded-lg">
-            <h3 className="font-bold text-lg mb-2">Task {currentQuestion.task_number}</h3>
-            <p className="whitespace-pre-wrap mb-4">{currentQuestion.prompt_text}</p>
-            {currentQuestion.image_url && (
-              <img src={currentQuestion.image_url} alt="Task" className="w-full rounded-lg border border-gray-200" />
+            <h3 className="font-bold text-lg mb-2">Task {currentItem.task_number}</h3>
+            <p className="whitespace-pre-wrap mb-4">{currentItem.prompt_text}</p>
+            {currentItem.image_url && (
+              <img src={currentItem.image_url} alt="Task" className="w-full rounded-lg border border-gray-200" />
             )}
             <div className="mt-4 text-sm text-gray-500">
-              Min words: {currentQuestion.word_limit_min}
+              Min words: {currentItem.word_limit_min}
             </div>
           </div>
           <div>
             <textarea
               className="w-full h-96 border border-gray-300 rounded-lg p-4 font-mono"
               placeholder="Type your essay here..."
-              onChange={(e) => setAnswers({...answers, [`w-${currentQuestion.id}`]: e.target.value})}
-              value={answers[`w-${currentQuestion.id}`] || ''}
+              onChange={(e) => setAnswers({...answers, [`w-${currentItem.id}`]: e.target.value})}
+              value={answers[`w-${currentItem.id}`] || ''}
             />
             <div className="mt-2 flex justify-between items-center">
               <div className={`text-sm ${
-                ((answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentQuestion.word_limit_min)
+                ((answers[`w-${currentItem.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentItem.word_limit_min)
                   ? 'text-red-600 font-semibold'
                   : 'text-gray-500'
               }`}>
-                {((answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentQuestion.word_limit_min) && '⚠️ '}
-                Word count: {(answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length}
-                {((answers[`w-${currentQuestion.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentQuestion.word_limit_min) && 
-                  ` (Minimum: ${currentQuestion.word_limit_min})`
+                {((answers[`w-${currentItem.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentItem.word_limit_min) && '⚠️ '}
+                Word count: {(answers[`w-${currentItem.id}`] || '').split(/\s+/).filter(w => w.length > 0).length}
+                {((answers[`w-${currentItem.id}`] || '').split(/\s+/).filter(w => w.length > 0).length < currentItem.word_limit_min) && 
+                  ` (Minimum: ${currentItem.word_limit_min})`
                 }
               </div>
             </div>
@@ -306,13 +345,14 @@ export default function TestAttempt() {
       );
     }
 
+    // SPEAKING: Keep as-is
     if (currentSection.section_type === 'speaking') {
       return (
         <SpeakingSection 
-          task={currentQuestion} 
+          task={currentItem} 
           attemptId={attemptId}
           onComplete={() => {
-            if (currentQuestionIndex < questions.length - 1) {
+            if (currentItemIndex < items.length - 1) {
                 handleNext();
             } else {
                 handleSectionFinish();
@@ -323,6 +363,15 @@ export default function TestAttempt() {
     }
   };
 
+  // Get label for current item
+  const getItemLabel = () => {
+    if (currentSection.section_type === 'listening') return `Part ${currentItem?.part_number || 1}`;
+    if (currentSection.section_type === 'reading') return `Passage ${currentItem?.passage_number || 1}`;
+    if (currentSection.section_type === 'writing') return `Task ${currentItem?.task_number || 1}`;
+    if (currentSection.section_type === 'speaking') return `Part ${currentItem?.part_number || 1}`;
+    return '';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -331,7 +380,7 @@ export default function TestAttempt() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-xl font-bold text-gray-900 capitalize">
-                {currentSection.section_type} Section
+                {currentSection.section_type} Section - {getItemLabel()}
               </h1>
               <p className="text-sm text-gray-600">{attempt.test_template.title}</p>
             </div>
@@ -374,8 +423,8 @@ export default function TestAttempt() {
       <div className="flex-1 max-w-7xl mx-auto px-4 py-6 w-full">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 h-full">
           <ProgressBar
-            current={currentQuestionIndex + 1}
-            total={questions.length}
+            current={currentItemIndex + 1}
+            total={items.length}
           />
           
           <div className="mt-8">
@@ -386,13 +435,14 @@ export default function TestAttempt() {
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
             <button
               onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0 || currentSection.section_type === 'speaking'}
+              disabled={currentItemIndex === 0 || currentSection.section_type === 'speaking'}
               className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ← Previous
+              ← Previous {currentSection.section_type === 'listening' ? 'Part' : 
+                         currentSection.section_type === 'reading' ? 'Passage' : 'Task'}
             </button>
             
-            {currentQuestionIndex === questions.length - 1 ? (
+            {currentItemIndex === items.length - 1 ? (
               <button
                 onClick={handleSectionFinish}
                 className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
@@ -405,7 +455,8 @@ export default function TestAttempt() {
                 disabled={currentSection.section_type === 'speaking'}
                 className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next →
+                Next {currentSection.section_type === 'listening' ? 'Part' : 
+                      currentSection.section_type === 'reading' ? 'Passage' : 'Task'} →
               </button>
             )}
           </div>
@@ -447,13 +498,12 @@ function SpeakingSection({ task, attemptId, onComplete }) {
         if (status === 'preparing') {
             startRecording();
         } else if (status === 'recording') {
-            // AudioRecorder handles auto-stop via maxDuration, but we can double check
             setStatus('uploading');
         }
     };
 
     const startPreparation = () => {
-        const prepTime = task.preparation_time_seconds || 10; // Default 10s if null
+        const prepTime = task.preparation_time_seconds || 10;
         setTimeLeft(prepTime);
         setStatus('preparing');
     };
@@ -477,7 +527,7 @@ function SpeakingSection({ task, attemptId, onComplete }) {
         } catch (err) {
             console.error("Upload failed:", err);
             setUploadError("Failed to upload recording. Please try again.");
-            setStatus('completed'); // Allow moving on even if upload fails? Or retry?
+            setStatus('completed');
         }
     };
 

@@ -162,12 +162,12 @@ def get_listening_question(
 @router.put("/questions/{question_id}", response_model=ListeningQuestionResponse)
 def update_listening_question(
     question_id: int,
-    question_update: ListeningQuestionUpdate,
+    question_update: ListeningQuestionWithAnswerCreate,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
-    Update a listening question (Admin only)
+    Update a listening question with answer (Admin only)
     """
     question = db.query(ListeningQuestion).filter(
         ListeningQuestion.id == question_id
@@ -179,18 +179,27 @@ def update_listening_question(
             detail="Question not found"
         )
     
-    update_data = question_update.model_dump(exclude_unset=True, exclude={'options'})
+    # Update question fields from the nested question object
+    update_data = question_update.question.model_dump(exclude_unset=True, exclude={'options', 'section_id', 'part_id'})
     for field, value in update_data.items():
         setattr(question, field, value)
     
     # Update options if provided
-    if question_update.options is not None:
-        question.options = [opt.model_dump() for opt in question_update.options]
+    if question_update.question.options is not None:
+        question.options = [opt.model_dump() for opt in question_update.question.options]
+    
+    # Update answer if exists
+    if question.answers and question_update.answer:
+        answer = question.answers[0]
+        answer_data = question_update.answer.model_dump(exclude_unset=True)
+        for field, value in answer_data.items():
+            setattr(answer, field, value)
     
     db.commit()
     db.refresh(question)
     
     return question
+
 
 @router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_listening_question(

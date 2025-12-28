@@ -13,7 +13,8 @@ import apiClient from '../../api/client';
 export default function DiagramEditor({ value, onChange }) {
   const [imageUrl, setImageUrl] = useState(value?.image_url || '');
   const [labels, setLabels] = useState(value?.labels || []);
-  const [answers, setAnswers] = useState(value?.answers || {});
+  // answers comes as either {labels: {...}} or directly as {...}
+  const [answers, setAnswers] = useState(value?.answers?.labels || value?.answers || {});
   const [maxWords, setMaxWords] = useState(value?.max_words_per_label || 2);
   const [uploading, setUploading] = useState(false);
   const imageRef = useRef(null);

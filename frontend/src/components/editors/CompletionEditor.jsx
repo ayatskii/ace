@@ -18,7 +18,7 @@ import MarkdownEditor from '../common/MarkdownEditor';
 export default function CompletionEditor({ value, onChange, questionType }) {
   const [template, setTemplate] = useState(value?.template_text || '');
   const [blanks, setBlanks] = useState(value?.blanks || []);
-  const [answers, setAnswers] = useState(value?.answers || {});
+  const [answers, setAnswers] = useState(value?.answers?.blanks || {});
 
   // Auto-detect [BLANK_X] markers when template changes
   useEffect(() => {

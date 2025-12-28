@@ -19,7 +19,7 @@ export default function MatchingEditor({ value, onChange }) {
     { option_label: 'B', option_text: '' },
     { option_label: 'C', option_text: '' }
   ]);
-  const [mappings, setMappings] = useState(value?.mappings || {});
+  const [mappings, setMappings] = useState(value?.answers?.mappings || {});
   const [allowReuse, setAllowReuse] = useState(value?.allow_option_reuse || false);
 
   // Generate next letter label

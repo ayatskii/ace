@@ -19,26 +19,39 @@ export default function TableQuestionRenderer({ question, answer, onAnswerChange
   const renderCellContent = (content) => {
     if (!content) return null;
 
-    // Check for [BLANK_X] marker
-    const match = content.match(/\[BLANK_(\d+)\]/);
-    if (match) {
-      const blankId = `BLANK_${match[1]}`;
-      const config = blanks?.find(b => b.blank_id === blankId);
-      const currentValue = answer?.[blankId] || '';
-
-      return (
-        <input
-          type="text"
-          value={currentValue}
-          onChange={(e) => handleInputChange(blankId, e.target.value)}
-          className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          placeholder={`(${config?.max_words || 3} words)`}
-          aria-label={`Blank ${match[1]}`}
-        />
-      );
+    // Split by BLANK markers to handle mixed content (text + blanks)
+    const parts = content.split(/(\[BLANK_\d+\])/g);
+    
+    // If no blanks found, just return the text
+    if (parts.length === 1) {
+      return <span>{content}</span>;
     }
 
-    return <span>{content}</span>;
+    return (
+      <>
+        {parts.map((part, idx) => {
+          const match = part.match(/\[BLANK_(\d+)\]/);
+          if (match) {
+            const blankId = `BLANK_${match[1]}`;
+            const config = blanks?.find(b => b.blank_id === blankId);
+            const currentValue = answer?.[blankId] || '';
+
+            return (
+              <input
+                key={idx}
+                type="text"
+                value={currentValue}
+                onChange={(e) => handleInputChange(blankId, e.target.value)}
+                className="inline-block border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent min-w-[100px]"
+                placeholder={`(${config?.max_words || 3} words)`}
+                aria-label={`Blank ${match[1]}`}
+              />
+            );
+          }
+          return <span key={idx}>{part}</span>;
+        })}
+      </>
+    );
   };
 
   if (!table_structure) return <div>Invalid question format</div>;

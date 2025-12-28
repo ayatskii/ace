@@ -140,6 +140,9 @@ def grade_completion(
     user_blanks = {}
     if isinstance(user_answer, dict):
         user_blanks = user_answer.get("blanks", {})
+        # Fallback: handle flat format where keys are BLANK_X directly
+        if not user_blanks:
+            user_blanks = {k: v for k, v in user_answer.items() if k.startswith("BLANK_")}
     elif isinstance(user_answer, str):
         # Legacy: single answer text
         user_blanks = {"BLANK_1": user_answer}
@@ -219,6 +222,9 @@ def grade_matching(
     user_mappings = {}
     if isinstance(user_answer, dict):
         user_mappings = user_answer.get("mappings", {})
+        # Fallback: handle flat format where keys are item numbers directly
+        if not user_mappings:
+            user_mappings = {k: v for k, v in user_answer.items() if k.isdigit() or (isinstance(k, str) and k.isdigit())}
     
     correct_mappings = answer_data.get("mappings", {})
     total_items = len(correct_mappings)
@@ -321,6 +327,9 @@ def grade_tfng(
     user_answers = {}
     if isinstance(user_answer, dict):
         user_answers = user_answer.get("answers", {})
+        # Fallback: handle flat format where keys are statement numbers directly
+        if not user_answers:
+            user_answers = {k: v for k, v in user_answer.items() if k.isdigit() or (isinstance(k, str) and k.isdigit())}
     
     correct_answers = answer_data.get("answers", {})
     total_statements = len(correct_answers)
@@ -371,6 +380,9 @@ def grade_diagram(
     user_labels = {}
     if isinstance(user_answer, dict):
         user_labels = user_answer.get("labels", {})
+        # Fallback: handle flat format where keys are label IDs directly (e.g., {"1": "library"})
+        if not user_labels:
+            user_labels = {k: v for k, v in user_answer.items() if isinstance(k, str)}
     
     correct_labels = answer_data.get("labels", {})
     max_words = config.get("max_words_per_label", 2)
@@ -392,12 +404,19 @@ def grade_diagram(
         user_normalized = normalize_text(user_text, case_sensitive=False)
         
         is_correct = False
+        # Handle different answer formats: list, dict, or string
         if isinstance(correct_answers, list):
             for correct in correct_answers:
-                if normalize_text(correct, case_sensitive=False) == user_normalized:
+                if isinstance(correct, str) and normalize_text(correct, case_sensitive=False) == user_normalized:
                     is_correct = True
                     break
-        else:
+        elif isinstance(correct_answers, dict):
+            # If correct_answers is a dict, check values
+            for correct in correct_answers.values():
+                if isinstance(correct, str) and normalize_text(correct, case_sensitive=False) == user_normalized:
+                    is_correct = True
+                    break
+        elif isinstance(correct_answers, str):
             is_correct = normalize_text(correct_answers, case_sensitive=False) == user_normalized
         
         results[label_id] = {
