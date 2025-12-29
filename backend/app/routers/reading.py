@@ -233,7 +233,8 @@ def update_reading_question(
             detail="Question not found"
         )
     
-    update_data = question_update.model_dump(exclude_unset=True, exclude={'options'})
+    # Exclude passage_id and question_number to avoid unique constraint issues
+    update_data = question_update.model_dump(exclude_unset=True, exclude={'options', 'passage_id', 'question_number'})
     for field, value in update_data.items():
         setattr(question, field, value)
     

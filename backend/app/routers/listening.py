@@ -180,7 +180,8 @@ def update_listening_question(
         )
     
     # Update question fields from the nested question object
-    update_data = question_update.question.model_dump(exclude_unset=True, exclude={'options', 'section_id', 'part_id'})
+    # Exclude section_id, part_id, and question_number to avoid unique constraint issues
+    update_data = question_update.question.model_dump(exclude_unset=True, exclude={'options', 'section_id', 'part_id', 'question_number'})
     for field, value in update_data.items():
         setattr(question, field, value)
     

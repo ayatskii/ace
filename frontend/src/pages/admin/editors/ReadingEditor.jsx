@@ -192,14 +192,21 @@ export default function ReadingEditor({ sectionId, testId }) {
 
   const handleEditQuestion = (question) => {
     setEditingQuestionId(question.id);
+    
+    // Get correct answer - for MCQ, use answer_data.correct_options[0], otherwise use legacy field
+    const correctOptionsFromData = question.answer_data?.correct_options || [];
+    const singleCorrectAnswer = correctOptionsFromData.length > 0 
+      ? correctOptionsFromData[0] 
+      : (question.answers?.[0]?.correct_answer || '');
+    
     setQuestionForm({
       question_number: question.question_number,
       question_type: question.question_type,
       question_text: question.question_text,
       marks: question.marks,
       options: question.options || [],
-      correct_answer: question.answers?.[0]?.correct_answer || '',
-      correct_answers: question.answer_data?.correct_options || [], 
+      correct_answer: singleCorrectAnswer,
+      correct_answers: correctOptionsFromData, 
       allow_multiple: question.type_specific_data?.allow_multiple || false,
       type_specific_data: question.type_specific_data || {},
       answer_data: question.answer_data || {}
