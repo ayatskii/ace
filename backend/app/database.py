@@ -11,7 +11,6 @@ load_dotenv()
 # Get database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ace_db")
 
-# Create SQLAlchemy engine with resilient settings
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,  # Enable connection health checks

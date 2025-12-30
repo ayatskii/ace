@@ -35,16 +35,11 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=ace_db
-      - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    shm_size: "256mb"
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    ports:
-      - "5432:5432"
+    # SECURITY: Do NOT expose port 5432 externally!
+    # ports:
+    #   - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
