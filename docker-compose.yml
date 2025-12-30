@@ -38,6 +38,11 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    shm_size: "256mb"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     ports:
       - "5432:5432"
     healthcheck:

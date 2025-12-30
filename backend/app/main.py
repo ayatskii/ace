@@ -11,15 +11,34 @@ from fastapi.staticfiles import StaticFiles
 from app.database import engine, get_db, init_db
 from app.models import Base
 from app.routers import api_router  # Changed from app.api.v1.router
+import time
 
 # Load environment variables
 load_dotenv()
+
+def wait_for_db(max_retries=30, delay=2):
+    """Wait for database to be ready with retries"""
+    from sqlalchemy import text
+    for attempt in range(max_retries):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            print("✅ Database connection established!")
+            return True
+        except Exception as e:
+            print(f"⏳ Waiting for database... (attempt {attempt + 1}/{max_retries})")
+            time.sleep(delay)
+    print("❌ Could not connect to database after maximum retries")
+    return False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan events"""
     print("🚀 Starting up ACE Platform...")
-    init_db()
+    if wait_for_db():
+        init_db()
+    else:
+        print("⚠️ Starting without database initialization")
     yield
     print("👋 Shutting down ACE Platform...")
 

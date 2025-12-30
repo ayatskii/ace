@@ -11,13 +11,15 @@ load_dotenv()
 # Get database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ace_db")
 
-# Create SQLAlchemy engine
+# Create SQLAlchemy engine with resilient settings
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,  # Enable connection health checks
-    pool_size=10,  # Maximum number of connections to keep open
-    max_overflow=20,  # Maximum number of connections that can be created beyond pool_size
-    echo=False  # Set to True for SQL query logging (useful for debugging)
+    pool_size=5,  # Maximum number of connections to keep open
+    max_overflow=10,  # Maximum number of connections beyond pool_size
+    pool_recycle=300,  # Recycle connections after 5 minutes
+    pool_timeout=30,  # Timeout waiting for connection
+    echo=False  # Set to True for SQL query logging
 )
 
 # Create SessionLocal class
