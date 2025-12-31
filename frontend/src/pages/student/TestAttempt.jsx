@@ -1,5 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import Timer from '../../components/test/Timer';
 import ProgressBar from '../../components/test/ProgressBar';
 import AudioRecorder from '../../components/test/AudioRecorder';
@@ -10,7 +13,8 @@ import {
   DiagramQuestionRenderer,
   TFNGQuestionRenderer,
   MCQQuestionRenderer,
-  TableQuestionRenderer
+  TableQuestionRenderer,
+  ShortAnswerQuestionRenderer
 } from '../../components/test/renderers';
 
 export default function TestAttempt() {
@@ -184,9 +188,11 @@ export default function TestAttempt() {
       case 'reading_summary_completion':
       case 'reading_note_completion':
       case 'reading_form_completion':
+        return <CompletionQuestionRenderer {...commonProps} />;
+
       case 'reading_short_answer': 
       case 'listening_short_answer':
-        return <CompletionQuestionRenderer {...commonProps} />;
+        return <ShortAnswerQuestionRenderer {...commonProps} />;
       
       case 'listening_matching':
       case 'listening_matching_headings':
@@ -259,7 +265,11 @@ export default function TestAttempt() {
                   <span className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
                     {question.question_number}
                   </span>
-                  <h4 className="text-lg font-medium text-gray-900">{question.question_text}</h4>
+                  <h4 className="text-lg font-medium text-gray-900">
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} className="prose prose-sm max-w-none">
+                      {question.question_text}
+                    </ReactMarkdown>
+                  </h4>
                 </div>
                 {question.image_url && (
                   <img src={question.image_url} alt="Question Diagram" className="mb-4 max-h-64 object-contain rounded-lg" />
@@ -283,8 +293,10 @@ export default function TestAttempt() {
               <h3 className="font-bold text-xl text-gray-900">{currentItem.title}</h3>
               <p className="text-sm text-gray-500">Passage {currentItem.passage_number}</p>
             </div>
-            <div className="prose max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed">
-              {currentItem.content}
+            <div className="prose max-w-none text-gray-800 leading-relaxed">
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                {currentItem.content}
+              </ReactMarkdown>
             </div>
           </div>
           
@@ -296,7 +308,11 @@ export default function TestAttempt() {
                   <span className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
                     {question.question_number}
                   </span>
-                  <h4 className="text-lg font-medium text-gray-900">{question.question_text}</h4>
+                  <h4 className="text-lg font-medium text-gray-900">
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} className="prose prose-sm max-w-none">
+                      {question.question_text}
+                    </ReactMarkdown>
+                  </h4>
                 </div>
                 {renderQuestionContent(question)}
               </div>

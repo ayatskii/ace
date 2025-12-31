@@ -152,6 +152,16 @@ export default function ReadingEditor({ sectionId, testId }) {
        };
     }
 
+    // Handle short answer type
+    if (questionForm.question_type === 'reading_short_answer') {
+       payload.question.type_specific_data = { 
+         max_words: parseInt(questionForm.max_words) || 3
+       };
+       payload.question.answer_data = {
+         correct_answer: questionForm.correct_answer
+       };
+    }
+
     try {
       if (editingQuestionId) {
         await apiClient.put(`/reading/questions/${editingQuestionId}`, payload);
@@ -193,11 +203,20 @@ export default function ReadingEditor({ sectionId, testId }) {
   const handleEditQuestion = (question) => {
     setEditingQuestionId(question.id);
     
-    // Get correct answer - for MCQ, use answer_data.correct_options[0], otherwise use legacy field
+    // Determine correct answer based on question type
+    let correctAnswer = '';
     const correctOptionsFromData = question.answer_data?.correct_options || [];
-    const singleCorrectAnswer = correctOptionsFromData.length > 0 
-      ? correctOptionsFromData[0] 
-      : (question.answers?.[0]?.correct_answer || '');
+    
+    if (question.question_type?.includes('short_answer')) {
+      // Short answer: prioritize answer_data.correct_answer
+      correctAnswer = question.answer_data?.correct_answer || question.answers?.[0]?.correct_answer || '';
+    } else if (correctOptionsFromData.length > 0) {
+      // MCQ: use correct_options from answer_data
+      correctAnswer = correctOptionsFromData[0];
+    } else {
+      // Fallback to legacy answer
+      correctAnswer = question.answers?.[0]?.correct_answer || '';
+    }
     
     setQuestionForm({
       question_number: question.question_number,
@@ -205,9 +224,10 @@ export default function ReadingEditor({ sectionId, testId }) {
       question_text: question.question_text,
       marks: question.marks,
       options: question.options || [],
-      correct_answer: singleCorrectAnswer,
+      correct_answer: correctAnswer,
       correct_answers: correctOptionsFromData, 
       allow_multiple: question.type_specific_data?.allow_multiple || false,
+      max_words: question.type_specific_data?.max_words || 3,
       type_specific_data: question.type_specific_data || {},
       answer_data: question.answer_data || {}
     });
@@ -249,6 +269,34 @@ export default function ReadingEditor({ sectionId, testId }) {
         // Fallback for simple types (MCQ, Short Answer)
         if (questionForm.question_type.includes('multiple_choice')) {
           return renderMCQEditor();
+        }
+        // Short answer editor
+        if (questionForm.question_type.includes('short_answer')) {
+          return (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Max Words Allowed</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={questionForm.max_words || 3}
+                  onChange={(e) => setQuestionForm({...questionForm, max_words: e.target.value})}
+                  className="w-24 border border-gray-300 rounded-lg px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
+                <input
+                  type="text"
+                  value={questionForm.correct_answer}
+                  onChange={(e) => setQuestionForm({...questionForm, correct_answer: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="Enter the correct answer"
+                />
+                <p className="text-xs text-gray-500 mt-1">This will be used for auto-grading.</p>
+              </div>
+            </div>
+          );
         }
         return (
           <div>

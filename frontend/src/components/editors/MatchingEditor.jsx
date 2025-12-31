@@ -22,6 +22,14 @@ export default function MatchingEditor({ value, onChange }) {
   const [mappings, setMappings] = useState(value?.answers?.mappings || {});
   const [allowReuse, setAllowReuse] = useState(value?.allow_option_reuse || false);
 
+  // Re-initialize state when value changes (important for editing)
+  useEffect(() => {
+    if (value?.items) setItems(value.items);
+    if (value?.options) setOptions(value.options);
+    if (value?.answers?.mappings) setMappings(value.answers.mappings);
+    if (value?.allow_option_reuse !== undefined) setAllowReuse(value.allow_option_reuse);
+  }, [JSON.stringify(value?.items), JSON.stringify(value?.options), JSON.stringify(value?.answers?.mappings), value?.allow_option_reuse]);
+
   // Generate next letter label
   const getNextLabel = () => {
     if (options.length === 0) return 'A';

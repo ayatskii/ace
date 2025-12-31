@@ -18,6 +18,13 @@ export default function TFNGEditor({ value, onChange, questionType }) {
   );
   const [answers, setAnswers] = useState(value?.answers?.answers || {});
 
+  // Re-initialize state when value changes (important for editing)
+  useEffect(() => {
+    if (value?.statements) setStatements(value.statements);
+    if (value?.answer_type) setAnswerType(value.answer_type);
+    if (value?.answers?.answers) setAnswers(value.answers.answers);
+  }, [JSON.stringify(value?.statements), value?.answer_type, JSON.stringify(value?.answers?.answers)]);
+
   // Get options based on answer type
   const getOptions = () => {
     if (answerType === 'yes_no_not_given') {

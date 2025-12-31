@@ -20,6 +20,13 @@ export default function CompletionEditor({ value, onChange, questionType }) {
   const [blanks, setBlanks] = useState(value?.blanks || []);
   const [answers, setAnswers] = useState(value?.answers?.blanks || {});
 
+  // Re-initialize state when value changes (important for editing)
+  useEffect(() => {
+    setTemplate(value?.template_text || '');
+    setBlanks(value?.blanks || []);
+    setAnswers(value?.answers?.blanks || {});
+  }, [value?.template_text, JSON.stringify(value?.blanks), JSON.stringify(value?.answers?.blanks)]);
+
   // Auto-detect [BLANK_X] markers when template changes
   useEffect(() => {
     const regex = /\[BLANK_(\d+)\]/g;

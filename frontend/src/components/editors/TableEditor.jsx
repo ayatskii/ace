@@ -6,6 +6,14 @@ export default function TableEditor({ value, onChange }) {
   const [blanks, setBlanks] = useState(value?.blanks || []);
   const [answers, setAnswers] = useState(value?.answers?.blanks || {});
 
+  // Re-initialize state when value changes (important for editing)
+  useEffect(() => {
+    if (value?.table_structure?.headers) setHeaders(value.table_structure.headers);
+    if (value?.table_structure?.rows) setRows(value.table_structure.rows);
+    if (value?.blanks) setBlanks(value.blanks);
+    if (value?.answers?.blanks) setAnswers(value.answers.blanks);
+  }, [JSON.stringify(value?.table_structure), JSON.stringify(value?.blanks), JSON.stringify(value?.answers?.blanks)]);
+
   // Update parent when local state changes
   useEffect(() => {
     onChange?.({

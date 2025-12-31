@@ -19,6 +19,15 @@ export default function DiagramEditor({ value, onChange }) {
   const [uploading, setUploading] = useState(false);
   const imageRef = useRef(null);
 
+  // Re-initialize state when value changes (important for editing)
+  useEffect(() => {
+    if (value?.image_url) setImageUrl(value.image_url);
+    if (value?.labels) setLabels(value.labels);
+    if (value?.answers?.labels) setAnswers(value.answers.labels);
+    else if (value?.answers && typeof value.answers === 'object') setAnswers(value.answers);
+    if (value?.max_words_per_label) setMaxWords(value.max_words_per_label);
+  }, [value?.image_url, JSON.stringify(value?.labels), JSON.stringify(value?.answers), value?.max_words_per_label]);
+
   // Notify parent of changes
   useEffect(() => {
     onChange?.({
