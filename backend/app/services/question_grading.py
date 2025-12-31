@@ -474,6 +474,12 @@ def grade_short_answer(
     if not isinstance(correct_answers, list):
         correct_answers = [correct_answers]
     
+    # Fallback to legacy singular format if correct_answers is empty
+    if not correct_answers:
+        legacy_answer = answer_data.get("correct_answer", "")
+        if legacy_answer:
+            correct_answers = [legacy_answer]
+    
     user_normalized = normalize_text(user_text, case_sensitive)
     
     # Check against expanded optional answers

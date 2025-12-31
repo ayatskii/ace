@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function TableEditor({ value, onChange }) {
   const [headers, setHeaders] = useState(value?.table_structure?.headers || ['Column 1', 'Column 2']);
@@ -6,8 +6,18 @@ export default function TableEditor({ value, onChange }) {
   const [blanks, setBlanks] = useState(value?.blanks || []);
   const [answers, setAnswers] = useState(value?.answers?.blanks || {});
 
-  // Re-initialize state when value changes (important for editing)
+  // Track if we're doing a local update to prevent re-initialization loop
+  const isLocalUpdate = useRef(false);
+
+  // Re-initialize state when value changes from EXTERNAL source (editing existing question)
+  // Skip if this is just a reflection of our own updates
   useEffect(() => {
+    // Skip re-initialization if this change came from our own onChange call
+    if (isLocalUpdate.current) {
+      isLocalUpdate.current = false;
+      return;
+    }
+    
     if (value?.table_structure?.headers) setHeaders(value.table_structure.headers);
     if (value?.table_structure?.rows) setRows(value.table_structure.rows);
     if (value?.blanks) setBlanks(value.blanks);
@@ -16,6 +26,8 @@ export default function TableEditor({ value, onChange }) {
 
   // Update parent when local state changes
   useEffect(() => {
+    // Mark that we're doing a local update so we don't re-initialize from our own change
+    isLocalUpdate.current = true;
     onChange?.({
       type_specific_data: {
         table_structure: {

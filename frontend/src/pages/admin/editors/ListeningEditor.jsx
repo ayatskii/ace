@@ -166,7 +166,7 @@ export default function ListeningEditor({ sectionId, testId }) {
          max_words: parseInt(questionForm.max_words) || 3
        };
        payload.question.answer_data = {
-         correct_answer: questionForm.correct_answer
+         correct_answers: [questionForm.correct_answer]  // Use array format for consistency
        };
     }
 
@@ -218,8 +218,9 @@ export default function ListeningEditor({ sectionId, testId }) {
     const correctOptionsFromData = question.answer_data?.correct_options || [];
     
     if (question.question_type?.includes('short_answer')) {
-      // Short answer: prioritize answer_data.correct_answer
-      correctAnswer = question.answer_data?.correct_answer || question.answers?.[0]?.correct_answer || '';
+      // Short answer: prioritize answer_data.correct_answers (array) or fallback to singular
+      const correctAnswers = question.answer_data?.correct_answers || [];
+      correctAnswer = correctAnswers[0] || question.answer_data?.correct_answer || question.answers?.[0]?.correct_answer || '';
     } else if (correctOptionsFromData.length > 0) {
       // MCQ: use correct_options from answer_data
       correctAnswer = correctOptionsFromData[0];

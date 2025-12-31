@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * TFNGEditor - Editor for True/False/Not Given and Yes/No/Not Given questions
@@ -18,8 +18,18 @@ export default function TFNGEditor({ value, onChange, questionType }) {
   );
   const [answers, setAnswers] = useState(value?.answers?.answers || {});
 
-  // Re-initialize state when value changes (important for editing)
+  // Track if we're doing a local update to prevent re-initialization loop
+  const isLocalUpdate = useRef(false);
+
+  // Re-initialize state when value changes from EXTERNAL source (editing existing question)
+  // Skip if this is just a reflection of our own updates
   useEffect(() => {
+    // Skip re-initialization if this change came from our own onChange call
+    if (isLocalUpdate.current) {
+      isLocalUpdate.current = false;
+      return;
+    }
+    
     if (value?.statements) setStatements(value.statements);
     if (value?.answer_type) setAnswerType(value.answer_type);
     if (value?.answers?.answers) setAnswers(value.answers.answers);
@@ -35,6 +45,8 @@ export default function TFNGEditor({ value, onChange, questionType }) {
 
   // Notify parent of changes
   useEffect(() => {
+    // Mark that we're doing a local update so we don't re-initialize from our own change
+    isLocalUpdate.current = true;
     onChange?.({
       type_specific_data: {
         statements: statements,

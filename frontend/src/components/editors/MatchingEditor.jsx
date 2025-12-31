@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 /**
  * MatchingEditor - Editor for matching-type questions
@@ -22,8 +22,18 @@ export default function MatchingEditor({ value, onChange }) {
   const [mappings, setMappings] = useState(value?.answers?.mappings || {});
   const [allowReuse, setAllowReuse] = useState(value?.allow_option_reuse || false);
 
-  // Re-initialize state when value changes (important for editing)
+  // Track if we're doing a local update to prevent re-initialization loop
+  const isLocalUpdate = useRef(false);
+
+  // Re-initialize state when value changes from EXTERNAL source (editing existing question)
+  // Skip if this is just a reflection of our own updates
   useEffect(() => {
+    // Skip re-initialization if this change came from our own onChange call
+    if (isLocalUpdate.current) {
+      isLocalUpdate.current = false;
+      return;
+    }
+    
     if (value?.items) setItems(value.items);
     if (value?.options) setOptions(value.options);
     if (value?.answers?.mappings) setMappings(value.answers.mappings);
@@ -39,6 +49,8 @@ export default function MatchingEditor({ value, onChange }) {
 
   // Notify parent of changes
   useEffect(() => {
+    // Mark that we're doing a local update so we don't re-initialize from our own change
+    isLocalUpdate.current = true;
     onChange?.({
       type_specific_data: {
         items: items,

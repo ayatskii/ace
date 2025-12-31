@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -19,12 +19,35 @@ export default function CompletionEditor({ value, onChange, questionType }) {
   const [template, setTemplate] = useState(value?.template_text || '');
   const [blanks, setBlanks] = useState(value?.blanks || []);
   const [answers, setAnswers] = useState(value?.answers?.blanks || {});
+  
+  // Track if we're doing a local update to prevent re-initialization loop
+  const isLocalUpdate = useRef(false);
+  const prevValueRef = useRef(value);
 
-  // Re-initialize state when value changes (important for editing)
+  // Re-initialize state when value changes from EXTERNAL source (editing existing question)
+  // Skip if this is just a reflection of our own updates
   useEffect(() => {
-    setTemplate(value?.template_text || '');
-    setBlanks(value?.blanks || []);
-    setAnswers(value?.answers?.blanks || {});
+    // Skip re-initialization if this change came from our own onChange call
+    if (isLocalUpdate.current) {
+      isLocalUpdate.current = false;
+      return;
+    }
+    
+    // Only reinitialize if value actually changed externally
+    const newTemplateText = value?.template_text || '';
+    const newBlanks = value?.blanks || [];
+    const newAnswers = value?.answers?.blanks || {};
+    
+    // Check if this is actually a new value (not just our reflected update)
+    if (newTemplateText !== template || 
+        JSON.stringify(newBlanks) !== JSON.stringify(blanks) ||
+        JSON.stringify(newAnswers) !== JSON.stringify(answers)) {
+      setTemplate(newTemplateText);
+      setBlanks(newBlanks);
+      setAnswers(newAnswers);
+    }
+    
+    prevValueRef.current = value;
   }, [value?.template_text, JSON.stringify(value?.blanks), JSON.stringify(value?.answers?.blanks)]);
 
   // Auto-detect [BLANK_X] markers when template changes
@@ -49,11 +72,16 @@ export default function CompletionEditor({ value, onChange, questionType }) {
       }
     });
     
-    setBlanks(detectedBlanks);
-  }, [template]);
+    // Only update if different to avoid infinite loops and flickering
+    if (JSON.stringify(detectedBlanks) !== JSON.stringify(blanks)) {
+      setBlanks(detectedBlanks);
+    }
+  }, [template, blanks]);
 
   // Notify parent when data changes
   useEffect(() => {
+    // Mark that we're doing a local update so we don't re-initialize from our own change
+    isLocalUpdate.current = true;
     onChange?.({
       type_specific_data: {
         template_text: template,
