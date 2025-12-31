@@ -172,7 +172,8 @@ export default function ListeningEditor({ sectionId, testId }) {
 
     try {
       if (editingQuestionId) {
-        await apiClient.put(`/listening/questions/${editingQuestionId}`, payload);
+        // For update, send only the question data (not wrapped in { question: ... })
+        await apiClient.put(`/listening/questions/${editingQuestionId}`, payload.question);
       } else {
         await apiClient.post('/listening/questions', payload);
       }

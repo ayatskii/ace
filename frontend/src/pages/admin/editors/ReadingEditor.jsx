@@ -164,7 +164,8 @@ export default function ReadingEditor({ sectionId, testId }) {
 
     try {
       if (editingQuestionId) {
-        await apiClient.put(`/reading/questions/${editingQuestionId}`, payload);
+        // For update, send only the question data (not wrapped in { question: ... })
+        await apiClient.put(`/reading/questions/${editingQuestionId}`, payload.question);
       } else {
         await apiClient.post('/reading/questions', payload);
       }
