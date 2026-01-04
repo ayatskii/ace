@@ -6,6 +6,7 @@ import remarkBreaks from 'remark-breaks';
 import Timer from '../../components/test/Timer';
 import ProgressBar from '../../components/test/ProgressBar';
 import AudioRecorder from '../../components/test/AudioRecorder';
+import RestrictedAudioPlayer from '../../components/test/RestrictedAudioPlayer';
 import apiClient from '../../api/client';
 import {
   CompletionQuestionRenderer,
@@ -246,7 +247,7 @@ export default function TestAttempt() {
           {/* Part Header with Audio */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
             <h3 className="text-xl font-bold text-blue-900 mb-3">Part {currentItem.part_number}</h3>
-            <audio controls src={currentItem.audio_url} className="w-full" />
+            <RestrictedAudioPlayer src={currentItem.audio_url} />
             {currentItem.transcript && (
               <details className="mt-3">
                 <summary className="text-sm text-blue-600 cursor-pointer hover:text-blue-800">Show Transcript</summary>

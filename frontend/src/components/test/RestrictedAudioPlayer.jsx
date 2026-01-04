@@ -1,220 +1,106 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-/**
- * RestrictedAudioPlayer - Audio player with IELTS-style restrictions
- * 
- * Features:
- * - Play count limit (default: 1 play only)
- * - Backward seeking disabled
- * - Visual feedback for remaining plays
- * - Locked state after plays exhausted
- */
-export default function RestrictedAudioPlayer({
-  src,
-  maxPlays = 1,
-  onPlayCountChange,
-  onEnded,
-  disabled = false
-}) {
+export default function RestrictedAudioPlayer({ src }) {
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playCount, setPlayCount] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [lastValidTime, setLastValidTime] = useState(0);
-  const [isLocked, setIsLocked] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  // Check if player is exhausted
-  const isExhausted = playCount >= maxPlays;
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
 
-  // Handle play button click
-  const handlePlay = useCallback(() => {
-    if (isExhausted || disabled || !audioRef.current) return;
-
-    if (isPlaying) {
-      // Pause is allowed
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      // Starting a new play
-      if (audioRef.current.ended || audioRef.current.currentTime === 0) {
-        setPlayCount(prev => {
-          const newCount = prev + 1;
-          onPlayCountChange?.(newCount);
-          return newCount;
-        });
+    const updateProgress = () => {
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100);
       }
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  }, [isExhausted, disabled, isPlaying, onPlayCountChange]);
+    };
 
-  // Handle time update - prevent backward seeking
-  const handleTimeUpdate = useCallback(() => {
-    if (!audioRef.current) return;
-    
-    const current = audioRef.current.currentTime;
-    
-    // Only allow forward movement or very small backward (to handle normal playback jitter)
-    if (current < lastValidTime - 0.5) {
-      // Attempted to seek backward - reset to last valid position
-      audioRef.current.currentTime = lastValidTime;
-    } else {
-      setLastValidTime(current);
-      setCurrentTime(current);
-    }
-  }, [lastValidTime]);
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setHasPlayed(true);
+      setProgress(100);
+    };
 
-  // Handle seeking attempt
-  const handleSeeking = useCallback(() => {
-    if (!audioRef.current) return;
-    
-    const seekTime = audioRef.current.currentTime;
-    
-    // Only allow seeking forward from current position
-    if (seekTime < lastValidTime - 0.5) {
-      audioRef.current.currentTime = lastValidTime;
-    }
-  }, [lastValidTime]);
+    // Prevent pausing by user interaction if possible (though hiding controls is the main way)
+    const handlePause = (e) => {
+      if (!audio.ended && !audio.seeking) {
+        // Force resume if paused not by ending
+        audio.play().catch(() => {});
+      }
+    };
 
-  // Handle audio ended
-  const handleEnded = useCallback(() => {
-    setIsPlaying(false);
-    setLastValidTime(0);
-    setCurrentTime(0);
-    
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-    }
-    
-    // Check if all plays are exhausted
-    if (playCount >= maxPlays) {
-      setIsLocked(true);
-    }
-    
-    onEnded?.();
-  }, [playCount, maxPlays, onEnded]);
+    audio.addEventListener('timeupdate', updateProgress);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('pause', handlePause);
 
-  // Handle metadata loaded
-  const handleLoadedMetadata = useCallback(() => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
+    return () => {
+      audio.removeEventListener('timeupdate', updateProgress);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('pause', handlePause);
+    };
   }, []);
 
-  // Format time as MM:SS
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  const handleStart = () => {
+    if (audioRef.current) {
+      audioRef.current.play().catch(err => {
+        console.error("Audio play failed:", err);
+        alert("Could not play audio. Please check your permissions.");
+      });
+      setIsPlaying(true);
+    }
   };
 
-  // Calculate progress percentage
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-
   return (
-    <div className={`rounded-lg border ${isLocked ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'} p-4 shadow-sm`}>
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        src={src}
-        onTimeUpdate={handleTimeUpdate}
-        onSeeking={handleSeeking}
-        onEnded={handleEnded}
-        onLoadedMetadata={handleLoadedMetadata}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+    <div className="w-full bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+      <audio 
+        ref={audioRef} 
+        src={src} 
+        className="hidden" 
+        preload="auto"
       />
 
-      {/* Player controls */}
-      <div className="flex items-center gap-4">
-        {/* Play/Pause button */}
-        <button
-          onClick={handlePlay}
-          disabled={isExhausted || disabled}
-          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-            isExhausted || disabled
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : isPlaying
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-primary-600 hover:bg-primary-700 text-white'
-          }`}
-          title={isExhausted ? 'No plays remaining' : isPlaying ? 'Pause' : 'Play'}
-        >
-          {isPlaying ? (
-            <PauseIcon />
-          ) : (
-            <PlayIcon />
-          )}
-        </button>
-
-        {/* Progress bar */}
-        <div className="flex-1">
-          <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="absolute left-0 top-0 h-full bg-primary-500 transition-all duration-100"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-
-        {/* Play count indicator */}
-        <div className={`text-sm font-medium px-3 py-1 rounded-full ${
-          isExhausted 
-            ? 'bg-red-100 text-red-700' 
-            : 'bg-green-100 text-green-700'
-        }`}>
-          {isExhausted ? (
-            <span>No plays left</span>
-          ) : (
-            <span>{maxPlays - playCount} play{maxPlays - playCount !== 1 ? 's' : ''} left</span>
-          )}
-        </div>
-      </div>
-
-      {/* Warning message when locked */}
-      {isLocked && (
-        <div className="mt-3 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-          <WarningIcon />
-          <span>You have used all available plays for this audio. You cannot replay it.</span>
+      {!hasPlayed && !isPlaying && (
+        <div className="text-center py-4">
+          <p className="text-gray-600 mb-4 font-medium">
+            ⚠️ Warning: The audio can only be played ONCE. You cannot pause or replay it.
+          </p>
+          <button
+            onClick={handleStart}
+            className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-full font-bold shadow-md transition-transform transform hover:scale-105 flex items-center gap-2 mx-auto"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+              <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+            </svg>
+            Start Audio
+          </button>
         </div>
       )}
 
-      {/* Instructions */}
-      {!isLocked && !isExhausted && (
-        <div className="mt-2 text-xs text-gray-500">
-          ⚠️ You can only play this audio once. Rewinding is disabled.
+      {isPlaying && (
+        <div className="py-2">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-primary-700 font-semibold">Audio Playing...</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+            <div 
+              className="bg-primary-600 h-2.5 rounded-full transition-all duration-300 ease-linear" 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">Do not refresh the page.</p>
+        </div>
+      )}
+
+      {hasPlayed && (
+        <div className="text-center py-2 flex items-center justify-center gap-2 text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
+          </svg>
+          <span className="font-medium">Audio playback completed</span>
         </div>
       )}
     </div>
-  );
-}
-
-// Icon components
-function PlayIcon() {
-  return (
-    <svg className="w-5 h-5 ml-1" fill="currentColor" viewBox="0 0 20 20">
-      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-    </svg>
-  );
-}
-
-function PauseIcon() {
-  return (
-    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M6 4a1 1 0 011 1v10a1 1 0 11-2 0V5a1 1 0 011-1zm8 0a1 1 0 011 1v10a1 1 0 11-2 0V5a1 1 0 011-1z" clipRule="evenodd" />
-    </svg>
-  );
-}
-
-function WarningIcon() {
-  return (
-    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-    </svg>
   );
 }
