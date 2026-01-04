@@ -1,3 +1,7 @@
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+
 export default function MatchingQuestionRenderer({ question, answer, onAnswerChange }) {
   const { items, allow_option_reuse } = question.type_specific_data || {};
   const options = question.type_specific_data?.options || question.options;
@@ -24,7 +28,11 @@ export default function MatchingQuestionRenderer({ question, answer, onAnswerCha
             <div key={item.item_number} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
               <span className="font-bold text-gray-700 pt-2">{item.item_number}.</span>
               <div className="flex-1 space-y-2">
-                <p className="text-gray-800">{item.item_text}</p>
+                <div className="text-gray-800">
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={{ p: 'span' }}>
+                    {item.item_text}
+                  </ReactMarkdown>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-500">Select answer:</span>
                   <select
@@ -80,7 +88,11 @@ export default function MatchingQuestionRenderer({ question, answer, onAnswerCha
                 }`}>
                   {opt.option_label}
                 </span>
-                <p className="text-gray-800 text-sm">{opt.option_text}</p>
+                <div className="text-gray-800 text-sm">
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={{ p: 'span' }}>
+                    {opt.option_text}
+                  </ReactMarkdown>
+                </div>
               </div>
             );
           })}

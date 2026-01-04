@@ -1,4 +1,7 @@
 import { useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 export default function TableQuestionRenderer({ question, answer, onAnswerChange }) {
   const { table_structure, blanks } = question.type_specific_data || {};
@@ -24,7 +27,14 @@ export default function TableQuestionRenderer({ question, answer, onAnswerChange
     
     // If no blanks found, just return the text
     if (parts.length === 1) {
-      return <span>{content}</span>;
+      return (
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm, remarkBreaks]} 
+          components={{ p: 'span' }}
+        >
+          {content}
+        </ReactMarkdown>
+      );
     }
 
     return (
@@ -48,7 +58,16 @@ export default function TableQuestionRenderer({ question, answer, onAnswerChange
               />
             );
           }
-          return <span key={idx}>{part}</span>;
+          return (
+            <span key={idx}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm, remarkBreaks]} 
+                components={{ p: 'span' }}
+              >
+                {part}
+              </ReactMarkdown>
+            </span>
+          );
         })}
       </>
     );
@@ -68,7 +87,12 @@ export default function TableQuestionRenderer({ question, answer, onAnswerChange
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200"
                 >
-                  {header}
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm, remarkBreaks]} 
+                    components={{ p: 'span' }}
+                  >
+                    {header}
+                  </ReactMarkdown>
                 </th>
               ))}
             </tr>
