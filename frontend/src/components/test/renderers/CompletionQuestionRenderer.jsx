@@ -1,4 +1,7 @@
 import { useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 
 export default function CompletionQuestionRenderer({ question, answer, onAnswerChange }) {
   const { template_text, blanks } = question.type_specific_data || {};
@@ -39,7 +42,18 @@ export default function CompletionQuestionRenderer({ question, answer, onAnswerC
             </span>
           );
         }
-        return <span key={idx}>{part}</span>;
+        return (
+          <span key={idx} className="inline">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm, remarkBreaks]} 
+              components={{
+                p: ({node, ...props}) => <span {...props} />
+              }}
+            >
+              {part}
+            </ReactMarkdown>
+          </span>
+        );
       })}
     </div>
   );

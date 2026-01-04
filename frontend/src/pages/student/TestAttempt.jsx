@@ -265,11 +265,11 @@ export default function TestAttempt() {
                   <span className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
                     {question.question_number}
                   </span>
-                  <h4 className="text-lg font-medium text-gray-900">
+                  <div className="text-lg font-medium text-gray-900">
                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} className="prose prose-sm max-w-none">
                       {question.question_text}
                     </ReactMarkdown>
-                  </h4>
+                  </div>
                 </div>
                 {question.image_url && (
                   <img src={question.image_url} alt="Question Diagram" className="mb-4 max-h-64 object-contain rounded-lg" />
@@ -290,7 +290,11 @@ export default function TestAttempt() {
           {/* Passage Content */}
           <div className="overflow-y-auto pr-4 border-r border-gray-200">
             <div className="sticky top-0 bg-white pb-2 border-b border-gray-100 mb-4">
-              <h3 className="font-bold text-xl text-gray-900">{currentItem.title}</h3>
+              <div className="font-bold text-xl text-gray-900 mb-2">
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={{ p: 'span' }}>
+                  {currentItem.title}
+                </ReactMarkdown>
+              </div>
               <p className="text-sm text-gray-500">Passage {currentItem.passage_number}</p>
             </div>
             <div className="prose max-w-none text-gray-800 leading-relaxed">
@@ -308,11 +312,11 @@ export default function TestAttempt() {
                   <span className="flex-shrink-0 w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
                     {question.question_number}
                   </span>
-                  <h4 className="text-lg font-medium text-gray-900">
+                  <div className="text-lg font-medium text-gray-900">
                     <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} className="prose prose-sm max-w-none">
                       {question.question_text}
                     </ReactMarkdown>
-                  </h4>
+                  </div>
                 </div>
                 {renderQuestionContent(question)}
               </div>
