@@ -1,34 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
+import MarkdownEditor from '../common/MarkdownEditor';
+import MatchingQuestionRenderer from '../test/renderers/MatchingQuestionRenderer';
 
 /**
- * MatchingEditor - Editor for matching-type questions
- * (Matching Headings, Sentence Endings, Paragraphs, Names, Features, Information)
+ * MatchingEditor - Editor for matching questions
+ * (Headings, Information, Features, Sentence Endings)
  * 
  * Features:
- * - Two-column layout: Items (numbered) and Options (lettered)
- * - Add/remove items and options
- * - Correct mapping selection per item
- * - Option reuse toggle
+ * - List of items (questions)
+ * - List of options (answers)
+ * - Configuration (allow reuse)
  */
-export default function MatchingEditor({ value, onChange }) {
-  const [items, setItems] = useState(value?.items || [
-    { item_number: 1, item_text: '' }
-  ]);
-  const [options, setOptions] = useState(value?.options || [
-    { option_label: 'A', option_text: '' },
-    { option_label: 'B', option_text: '' },
-    { option_label: 'C', option_text: '' }
-  ]);
-  const [mappings, setMappings] = useState(value?.answers?.mappings || {});
+export default function MatchingEditor({ value, onChange, questionType }) {
+  const [items, setItems] = useState(value?.items || []);
+  const [options, setOptions] = useState(value?.options || []);
   const [allowReuse, setAllowReuse] = useState(value?.allow_option_reuse || false);
+  const [answers, setAnswers] = useState(value?.answers?.matching || {});
 
   // Track if we're doing a local update to prevent re-initialization loop
   const isLocalUpdate = useRef(false);
 
-  // Re-initialize state when value changes from EXTERNAL source (editing existing question)
-  // Skip if this is just a reflection of our own updates
+  // Re-initialize state when value changes from EXTERNAL source
   useEffect(() => {
-    // Skip re-initialization if this change came from our own onChange call
     if (isLocalUpdate.current) {
       isLocalUpdate.current = false;
       return;
@@ -36,226 +29,182 @@ export default function MatchingEditor({ value, onChange }) {
     
     if (value?.items) setItems(value.items);
     if (value?.options) setOptions(value.options);
-    if (value?.answers?.mappings) setMappings(value.answers.mappings);
     if (value?.allow_option_reuse !== undefined) setAllowReuse(value.allow_option_reuse);
-  }, [JSON.stringify(value?.items), JSON.stringify(value?.options), JSON.stringify(value?.answers?.mappings), value?.allow_option_reuse]);
-
-  // Generate next letter label
-  const getNextLabel = () => {
-    if (options.length === 0) return 'A';
-    const lastLabel = options[options.length - 1].option_label;
-    return String.fromCharCode(lastLabel.charCodeAt(0) + 1);
-  };
+    if (value?.answers?.matching) setAnswers(value.answers.matching);
+  }, [JSON.stringify(value?.items), JSON.stringify(value?.options), value?.allow_option_reuse, JSON.stringify(value?.answers?.matching)]);
 
   // Notify parent of changes
   useEffect(() => {
-    // Mark that we're doing a local update so we don't re-initialize from our own change
     isLocalUpdate.current = true;
     onChange?.({
       type_specific_data: {
-        items: items,
-        options: options,
+        items,
+        options,
         allow_option_reuse: allowReuse
       },
       answer_data: {
-        mappings: mappings
+        matching: answers
       }
     });
-  }, [items, options, mappings, allowReuse]);
+  }, [items, options, allowReuse, answers]);
 
   const addItem = () => {
-    setItems([...items, { 
-      item_number: items.length + 1, 
-      item_text: '' 
+    setItems([...items, {
+      item_number: items.length + 1,
+      item_text: ''
     }]);
   };
 
-  const removeItem = (index) => {
-    const newItems = items.filter((_, i) => i !== index)
+  const removeItem = (idx) => {
+    const newItems = items.filter((_, i) => i !== idx)
       .map((item, i) => ({ ...item, item_number: i + 1 }));
     setItems(newItems);
     
-    // Clean up mappings
-    const newMappings = { ...mappings };
-    delete newMappings[String(items[index].item_number)];
-    setMappings(newMappings);
+    // Clean up answers
+    const newAnswers = { ...answers };
+    delete newAnswers[String(items[idx].item_number)];
+    setAnswers(newAnswers);
   };
 
-  const updateItem = (index, text) => {
-    setItems(items.map((item, i) => 
-      i === index ? { ...item, item_text: text } : item
-    ));
+  const updateItem = (idx, text) => {
+    const newItems = [...items];
+    newItems[idx].item_text = text;
+    setItems(newItems);
   };
 
   const addOption = () => {
-    setOptions([...options, { 
-      option_label: getNextLabel(), 
-      option_text: '' 
+    const nextLabel = String.fromCharCode(65 + options.length);
+    setOptions([...options, {
+      option_label: nextLabel,
+      option_text: ''
     }]);
   };
 
-  const removeOption = (index) => {
-    const removedLabel = options[index].option_label;
-    const newOptions = options.filter((_, i) => i !== index);
+  const removeOption = (idx) => {
+    const newOptions = options.filter((_, i) => i !== idx);
+    // Re-label options
+    const relabeled = newOptions.map((opt, i) => ({
+      ...opt,
+      option_label: String.fromCharCode(65 + i)
+    }));
+    setOptions(relabeled);
+  };
+
+  const updateOption = (idx, text) => {
+    const newOptions = [...options];
+    newOptions[idx].option_text = text;
     setOptions(newOptions);
-    
-    // Remove mappings that used this option
-    const newMappings = {};
-    Object.entries(mappings).forEach(([key, value]) => {
-      if (value !== removedLabel) {
-        newMappings[key] = value;
-      }
-    });
-    setMappings(newMappings);
   };
 
-  const updateOption = (index, text) => {
-    setOptions(options.map((opt, i) => 
-      i === index ? { ...opt, option_text: text } : opt
-    ));
+  const updateAnswer = (itemNumber, optionLabel) => {
+    setAnswers({ ...answers, [String(itemNumber)]: optionLabel });
   };
-
-  const updateMapping = (itemNumber, optionLabel) => {
-    setMappings({ ...mappings, [String(itemNumber)]: optionLabel });
-  };
-
-  // Track which options are used (for visual feedback)
-  const usedOptions = new Set(Object.values(mappings));
 
   return (
-    <div className="space-y-6">
-      {/* Settings */}
-      <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={allowReuse}
-            onChange={(e) => setAllowReuse(e.target.checked)}
-            className="rounded"
-          />
-          Allow options to be used multiple times
-        </label>
-        {!allowReuse && options.length < items.length && (
-          <span className="text-amber-600 text-sm">
-            ⚠️ Need at least {items.length} options for {items.length} items
-          </span>
-        )}
+    <div className="space-y-8">
+      {/* Configuration */}
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          checked={allowReuse}
+          onChange={(e) => setAllowReuse(e.target.checked)}
+          className="rounded text-primary-600"
+        />
+        <label className="text-sm font-medium text-gray-700">Allow options to be used more than once</label>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-2 gap-6">
-        {/* Items Column */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-gray-900">Items</h4>
-            <button
-              type="button"
-              onClick={addItem}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              + Add Item
-            </button>
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Items (Questions) Column */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center border-b pb-2">
+            <h4 className="font-medium text-gray-900">Questions / Items</h4>
+            <button type="button" onClick={addItem} className="text-sm text-primary-600 font-medium">+ Add Item</button>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-4">
             {items.map((item, idx) => (
-              <div key={idx} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
-                <span className="font-bold text-gray-700 w-6 pt-2">{item.item_number}.</span>
-                <div className="flex-1 space-y-2">
-                  <input
-                    type="text"
-                    value={item.item_text}
-                    onChange={(e) => updateItem(idx, e.target.value)}
-                    placeholder="Enter item text..."
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Maps to:</span>
-                    <select
-                      value={mappings[String(item.item_number)] || ''}
-                      onChange={(e) => updateMapping(item.item_number, e.target.value)}
-                      className={`border rounded px-2 py-1 text-sm ${
-                        mappings[String(item.item_number)] 
-                          ? 'border-green-500 bg-green-50' 
-                          : 'border-gray-300'
-                      }`}
-                    >
-                      <option value="">Select answer...</option>
-                      {options.map(opt => (
-                        <option 
-                          key={opt.option_label} 
-                          value={opt.option_label}
-                          disabled={!allowReuse && usedOptions.has(opt.option_label) && mappings[String(item.item_number)] !== opt.option_label}
-                        >
-                          {opt.option_label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div key={idx} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div className="flex justify-between mb-2">
+                  <span className="font-bold text-gray-700">{item.item_number}.</span>
+                  <button type="button" onClick={() => removeItem(idx)} className="text-gray-400 hover:text-red-500">×</button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeItem(idx)}
-                  className="text-gray-400 hover:text-red-500 pt-2"
-                  disabled={items.length <= 1}
-                >
-                  ×
-                </button>
+                <MarkdownEditor
+                  value={item.item_text}
+                  onChange={(e) => updateItem(idx, e.target.value)}
+                  rows={2}
+                  placeholder="Item text..."
+                  label=""
+                />
+                
+                {/* Answer Selection for Auto-grading */}
+                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Correct Answer:</span>
+                  <select
+                    value={answers[String(item.item_number)] || ''}
+                    onChange={(e) => updateAnswer(item.item_number, e.target.value)}
+                    className="text-sm border-gray-300 rounded-md"
+                  >
+                    <option value="">Select...</option>
+                    {options.map(opt => (
+                      <option key={opt.option_label} value={opt.option_label}>
+                        {opt.option_label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Options Column */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+        {/* Options (Answers) Column */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center border-b pb-2">
             <h4 className="font-medium text-gray-900">Options</h4>
-            <button
-              type="button"
-              onClick={addOption}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              + Add Option
-            </button>
+            <button type="button" onClick={addOption} className="text-sm text-primary-600 font-medium">+ Add Option</button>
           </div>
-          
-          <div className="space-y-2">
+
+          <div className="space-y-4">
             {options.map((opt, idx) => (
-              <div 
-                key={idx} 
-                className={`flex items-center gap-2 p-3 rounded-lg border ${
-                  usedOptions.has(opt.option_label) 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-gray-50 border-transparent'
-                }`}
-              >
-                <span className="font-bold text-gray-700 w-6">{opt.option_label}</span>
-                <input
-                  type="text"
+              <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold bg-primary-100 text-primary-700 px-2 py-0.5 rounded text-sm">
+                    {opt.option_label}
+                  </span>
+                  <div className="flex-1"></div>
+                  <button type="button" onClick={() => removeOption(idx)} className="text-gray-400 hover:text-red-500">×</button>
+                </div>
+                <MarkdownEditor
                   value={opt.option_text}
                   onChange={(e) => updateOption(idx, e.target.value)}
-                  placeholder="Enter option text..."
-                  className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+                  rows={2}
+                  placeholder="Option text..."
+                  label=""
                 />
-                <button
-                  type="button"
-                  onClick={() => removeOption(idx)}
-                  className="text-gray-400 hover:text-red-500"
-                  disabled={options.length <= 2}
-                >
-                  ×
-                </button>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-        <strong>Summary:</strong> {items.length} items to match with {options.length} options. 
-        {' '}
-        {Object.keys(mappings).length} of {items.length} items have answers assigned.
+      {/* Student Preview */}
+      <div className="border rounded-lg overflow-hidden mt-8">
+        <div className="bg-blue-50 px-4 py-2 border-b border-blue-100">
+          <h4 className="font-medium text-blue-900">Student Preview</h4>
+        </div>
+        <div className="p-4 bg-white">
+          <MatchingQuestionRenderer 
+            question={{
+              type_specific_data: {
+                items,
+                options,
+                allow_option_reuse: allowReuse
+              }
+            }}
+            answer={answers}
+            onAnswerChange={(newAnswers) => setAnswers(newAnswers)}
+          />
+        </div>
       </div>
     </div>
   );

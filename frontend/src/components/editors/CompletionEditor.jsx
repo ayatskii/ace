@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
 import MarkdownEditor from '../common/MarkdownEditor';
+import CompletionQuestionRenderer from '../test/renderers/CompletionQuestionRenderer';
 
 /**
  * CompletionEditor - Editor for completion-type questions
@@ -103,48 +101,6 @@ export default function CompletionEditor({ value, onChange, questionType }) {
     setAnswers({ ...answers, [blankId]: answerList });
   };
 
-  // Render preview with input boxes for blanks
-  const renderPreview = () => {
-    if (!template) return <p className="text-gray-400 italic">Enter template text to see preview</p>;
-    
-    // Replace [BLANK_X] with markdown links [BLANK_X](blank:X)
-    // This allows ReactMarkdown to handle the structure (paragraphs, lists) correctly
-    const processedTemplate = template.replace(/\[BLANK_(\d+)\]/g, '[BLANK_$1](blank:$1)');
-    
-    return (
-      <div className="prose max-w-none">
-        <ReactMarkdown 
-          remarkPlugins={[remarkGfm, remarkBreaks]}
-          components={{
-            a: ({node, ...props}) => {
-              // Check if this is a blank marker
-              if (props.href && props.href.startsWith('blank:')) {
-                const blankNum = props.href.split(':')[1];
-                const blankId = `BLANK_${blankNum}`;
-                const config = blanks.find(b => b.blank_id === blankId);
-                
-                return (
-                  <span className="inline-block mx-1">
-                    <input
-                      type="text"
-                      disabled
-                      placeholder={`_____ (${config?.max_words || 3} words max)`}
-                      className="border-b-2 border-gray-400 bg-gray-100 w-32 text-center text-sm px-1"
-                    />
-                  </span>
-                );
-              }
-              // Normal link
-              return <a target="_blank" rel="noopener noreferrer" {...props} />;
-            }
-          }}
-        >
-          {processedTemplate}
-        </ReactMarkdown>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Template Editor */}
@@ -226,7 +182,16 @@ Sentence: The event starts at [BLANK_1] on [BLANK_2].`}
           <h4 className="font-medium text-blue-900">Student Preview</h4>
         </div>
         <div className="p-4 bg-white">
-          {renderPreview()}
+          <CompletionQuestionRenderer 
+            question={{
+              type_specific_data: {
+                template_text: template,
+                blanks: blanks
+              }
+            }}
+            answer={answers}
+            onAnswerChange={(newAnswers) => setAnswers(newAnswers)}
+          />
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import TFNGQuestionRenderer from '../test/renderers/TFNGQuestionRenderer';
 
 /**
  * TFNGEditor - Editor for True/False/Not Given and Yes/No/Not Given questions
@@ -189,6 +190,25 @@ export default function TFNGEditor({ value, onChange, questionType }) {
         <strong>Summary:</strong> {statements.length} statements. 
         {' '}
         {Object.keys(answers).length} of {statements.length} have answers assigned.
+      </div>
+
+      {/* Student Preview */}
+      <div className="border rounded-lg overflow-hidden mt-8">
+        <div className="bg-blue-50 px-4 py-2 border-b border-blue-100">
+          <h4 className="font-medium text-blue-900">Student Preview</h4>
+        </div>
+        <div className="p-4 bg-white">
+          <TFNGQuestionRenderer 
+            question={{
+              type_specific_data: {
+                statements: statements,
+                answer_type: answerType
+              }
+            }}
+            answer={answers}
+            onAnswerChange={(newAnswers) => setAnswers(newAnswers)}
+          />
+        </div>
       </div>
     </div>
   );

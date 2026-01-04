@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import TableQuestionRenderer from '../test/renderers/TableQuestionRenderer';
 
 export default function TableEditor({ value, onChange }) {
   const [headers, setHeaders] = useState(value?.table_structure?.headers || ['Column 1', 'Column 2']);
@@ -215,6 +216,28 @@ export default function TableEditor({ value, onChange }) {
           </div>
         </div>
       )}
+
+      {/* Student Preview */}
+      <div className="border rounded-lg overflow-hidden mt-8">
+        <div className="bg-blue-50 px-4 py-2 border-b border-blue-100">
+          <h4 className="font-medium text-blue-900">Student Preview</h4>
+        </div>
+        <div className="p-4 bg-white">
+          <TableQuestionRenderer 
+            question={{
+              type_specific_data: {
+                table_structure: {
+                  headers,
+                  rows
+                },
+                blanks
+              }
+            }}
+            answer={answers}
+            onAnswerChange={(newAnswers) => setAnswers(newAnswers)}
+          />
+        </div>
+      </div>
     </div>
   );
 }

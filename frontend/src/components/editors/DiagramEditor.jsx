@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import apiClient from '../../api/client';
+import DiagramQuestionRenderer from '../test/renderers/DiagramQuestionRenderer';
 
 /**
  * DiagramEditor - Editor for diagram/map labeling questions
@@ -210,6 +211,26 @@ export default function DiagramEditor({ value, onChange }) {
           Upload an image to start adding label points
         </div>
       )}
+
+      {/* Student Preview */}
+      <div className="border rounded-lg overflow-hidden mt-8">
+        <div className="bg-blue-50 px-4 py-2 border-b border-blue-100">
+          <h4 className="font-medium text-blue-900">Student Preview</h4>
+        </div>
+        <div className="p-4 bg-white">
+          <DiagramQuestionRenderer 
+            question={{
+              type_specific_data: {
+                image_url: imageUrl,
+                labels: labels,
+                max_words_per_label: maxWords
+              }
+            }}
+            answer={answers}
+            onAnswerChange={(newAnswers) => setAnswers(newAnswers)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
