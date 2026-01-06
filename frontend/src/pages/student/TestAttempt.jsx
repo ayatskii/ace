@@ -333,7 +333,11 @@ export default function TestAttempt() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-gray-50 p-6 rounded-lg">
             <h3 className="font-bold text-lg mb-2">Task {currentItem.task_number}</h3>
-            <p className="whitespace-pre-wrap mb-4">{currentItem.prompt_text}</p>
+            <div className="prose prose-sm max-w-none mb-4 text-gray-800">
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                {currentItem.prompt_text}
+              </ReactMarkdown>
+            </div>
             {currentItem.image_url && (
               <img src={currentItem.image_url} alt="Task" className="w-full rounded-lg border border-gray-200" />
             )}
@@ -557,11 +561,19 @@ function SpeakingSection({ task, attemptId, onComplete }) {
             <h3 className="text-2xl font-bold mb-6">Speaking Part {task.part_number}</h3>
             
             <div className="bg-blue-50 p-8 rounded-xl mb-8 text-left">
-                <p className="text-xl text-gray-800 font-medium mb-4">{task.prompt_text}</p>
+                <div className="text-xl text-gray-800 font-medium mb-4 prose prose-lg max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                        {task.prompt_text}
+                    </ReactMarkdown>
+                </div>
                 {task.cue_card_points && (
                     <ul className="list-disc list-inside space-y-2 text-gray-700 bg-white p-4 rounded-lg border border-blue-100">
                         {task.cue_card_points.map((point, idx) => (
-                            <li key={idx}>{point}</li>
+                            <li key={idx}>
+                                <ReactMarkdown components={{ p: 'span' }} remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                    {point}
+                                </ReactMarkdown>
+                            </li>
                         ))}
                     </ul>
                 )}
